@@ -122,6 +122,29 @@ save(df_rec, file = file.path(ifolder, 'rec_test2.Rdata'))
 ```
 
 ```{plot}
+ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
+
+load(file.path(ifolder, 'reg_test2.Rdata'))
+load(file.path(ifolder, 'seg_test2.Rdata'))
+load(file.path(ifolder, 'rec_test2.Rdata'))
+
+dts <- as.Date(names(df_out)[-c(1:5)])
+
+# helper function
+
+for (id in 1:50){
+  PlotData(id, df_out, seg, df_rec)
+}
+
+# plot time series with max, median and min RRI
+id <- which(df_rec$RRI == max(df_rec$RRI, na.rm = T))
+PlotData(id, df_out, seg, df_rec)
+
+id <- which(df_rec$RRI == median(df_rec$RRI, na.rm = T))
+PlotData(id, df_out, seg, df_rec)
+
+id <- which(df_rec$RRI == min(df_rec$RRI, na.rm = T))
+PlotData(id, df_out, seg, df_rec)
 
 ```
 

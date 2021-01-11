@@ -1,3 +1,14 @@
+#' Title
+#'
+#' @param tsio
+#' @param obspyr
+#' @param h
+#' @param seas
+#'
+#' @return
+#' @export
+#'
+#' @examples
 getSegments <- function(tsio, obspyr, h = 0.15, seas = T){
   # Create time series object, needed as input for BFAST
   tsi <- ts(tsio, frequency = obspyr)

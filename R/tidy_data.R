@@ -19,7 +19,7 @@ tidy_data <- function(x, col_names){
   cat(z, file=tmpf, sep="\n")
 
   # load data again, to get rid of the "[" seperator and assign column names
-  dat_orig <- read_csv(tmpf, quote="[",
+  dat_orig <- read.csv(tmpf, quote="[",
                        col_names=col_names)
   # count number of images per time series
   dat_format <- dat_orig%>%

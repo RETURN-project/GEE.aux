@@ -7,6 +7,8 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(zoo)
 ```
 
 ## inputs
@@ -27,6 +29,100 @@ for (file in ifiles){
   dat_tidy <- tidy_data(x,col_names)
   write_csv(dat_tidy, file.path(ofolder, paste0('tidy_',file)))
 }
+```
+
+```{r regular_ts}
+
+# ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
+# ifile <- 'tidy_test2.csv'
+
+
+
+# dat <- read_csv(file.path(ifolder,ifile))
+
+cols <- names(dat_tidy)
+dtcols <- cols[startsWith(cols,"p__")]
+obscols <- cols[startsWith(cols,"series__")]
+auxcols <- cols[!startsWith(cols,"p__") & !startsWith(cols,"series__")]
+
+mnyr <- format(as.Date(as.character(min(dat_tidy[,dtcols], na.rm = T)),'%Y%m%d'),'%Y')
+mxyr <- format(as.Date(as.character(max(dat_tidy[,dtcols], na.rm = T)),'%Y%m%d'),'%Y')
+
+startdt <- as.Date(paste0(mnyr,'-01-01'))
+enddt <- as.Date(paste0(mxyr,'-12-31'))
+dts <- seq(startdt,enddt,by='month')
+
+dtsi <- dat_tidy[,dtcols]
+dtsi <- cbind(rep(as.numeric(paste0(mnyr,'0101')),dim(dtsi)[1]),rep(as.numeric(paste0(mxyr,'1231'),dim(dtsi)[1])),dtsi)
+obsi <- dat[,obscols]
+obsi <- cbind(rep(NA,dim(obsi)[1]),rep(NA,dim(obsi)[1]),obsi)
+
+test <- function(dts,obs){
+  obs <- obs[!is.na(dts)]
+  dts <- dts[!is.na(dts)]
+  dts <- as.Date(as.character(dts),'%Y%m%d')
+  regts <- toRegularTS(obs, dts, 'mean', 'monthly')
+} 
+
+out <- sapply(1:dim(obsi)[1], function(i) test(dtsi[i,], obsi[i,]))
+df_out <- as.data.frame(t(out))
+names(df_out) <- dts
+df_out <- cbind(dat_tidy[,auxcols],df_out)
+save(df_out, file = file.path(ifolder, 'reg_test2.Rdata'))
+
+```
+
+```{r segment}
+library(bfast)
+library(strucchange)
+
+# ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
+# ifile <- 'reg_test2.Rdata'
+
+# load(file.path(ifolder, ifile))
+nts <- dim(df_out)[1]
+  
+seg <- lapply(1:nts, function(i){getSegments(as.numeric(df_out[i,-c(1:5)]),12,0.15,T)})
+save(seg, file = file.path(ifolder, 'seg_test2.Rdata'))
+
+```
+
+```{recovery}
+# ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
+
+# load(file.path(ifolder, 'reg_test2.Rdata'))
+# load(file.path(ifolder, 'seg_test2.Rdata'))
+
+# dts <- as.Date(names(df_out)[-c(1:5)])
+
+obspyr <- 12
+nPre <- 2
+nDist <- 1
+nPost <- 2
+nPostStart <- 4
+nDelta <- 2
+nDeltaStart <- 4
+maxBreak <- F
+chkBrk <- T
+timeThres <- 1.5
+
+tst <- lapply(1:50,function(i){
+  dtdist <- as.Date(paste0(as.character(2000+df_out$lossyr[i]),'-06-01'))
+  tdist <- which(dts == dtdist)
+  tsi <- seg[[i]]$trend
+  tbp <- seg[[i]]$breakpoints
+  tbp <- tbp[tbp!=0 & tbp!=length(tsi)]
+  calcRecMetrics(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
+                                                  tbp, maxBreak, chkBrk,timeThres)})
+
+df_fr <- data.frame(do.call(rbind.data.frame, tst))
+df_rec <- cbind(df_out[c(1:50),c(1:5)], df_fr)
+
+save(df_rec, file = file.path(ifolder, 'rec_test2.Rdata'))
+```
+
+```{plot}
+
 ```
 
 ```{r inputs}

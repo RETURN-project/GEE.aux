@@ -5,15 +5,15 @@ yryr <- function(ts, ys, tpert=0, deltat=5) {
     # if ((tpert < min(ts, na.rm = TRUE)) || (tpert + deltat > max(ts, na.rm = TRUE))) {
     stop("Error: 'tpert' and/or 'tpert + deltat' are outside the bounds imposed by 'ts'")
   }
-  
+
   # Auxiliary interpolation function. Given a time, returns the corresponding value.
   # If the time is in ts, returns the corresponding ys. If the time is not in ts,
   # returns a linearly interpolated value
   V <- approxfun(x = ts, y = ys)
-  
+
   dy <- (mean(V(min(tpert, na.rm = T) + deltat)) - mean(V(tpert)))
   dx <- (mean(min(tpert, na.rm = T) + deltat) - mean(tpert))
-  
+
   # The result is the mean slope between t = tpert and t = tpert + deltat
   return(dy / dx)
 }
@@ -23,15 +23,15 @@ r80p <- function(ts, ys, r=0.8, ts_pre=c(-1,-2), ts_post=c(4, 5)) {
   # If the time is in ts, returns the corresponding ys. If the time is not in ts,
   # returns a linearly interpolated value
   V <- approxfun(x = ts, y = ys)
-  
+
   # The typical value before perturbation is defined as the average of the values
   # sampled at the times contained in ts_pre
   Vpre  <- mean(V(ts_pre))
-  
+
   # The typical value after perturbation is defined as the maximum of the values
   # sampled at the times contained in ts_post
   Vpost <- max(V(ts_post))
-  
+
   # Return the result
   return(Vpost / (Vpre * r))
 }
@@ -41,22 +41,22 @@ rri <- function(ts, ys, tpert=0, ts_pre=-1, ts_post=c(4, 5)) {
   # If the time is in ts, returns the corresponding ys. If the time is not in ts,
   # returns a linearly interpolated value
   V <- approxfun(x = ts, y = ys)
-  
+
   # The disturbance is assumed to happen at t = 0
   Vdist <- mean(V(tpert))
-  
+
   # The typical value before perturbation is defined as the average of the values
   # sampled at the times contained in ts_pre
   Vpre  <- mean(V(ts_pre))
-  
+
   # The typical value after perturbation is defined as the maximum of the values
   # sampled at the times contained in ts_post
   Vpost <- max(V(ts_post))
-  
+
   # The deltas are closely related to the typical values
   delta_dist <- abs(Vdist - Vpre)
   delta_rec <- abs(Vpost - Vdist)
-  
+
   return(delta_rec / delta_dist)
 }
 
@@ -113,10 +113,10 @@ calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, n
       dbr <- tbp-tdist
       tbp <- tbp[which(abs(dbr) == min(abs(dbr)))]
     }
-    
+
     # check the time period between the break and the disturbance
     timeChck <- ((min(abs(dbr))/obspyr) < timeThres)
-    
+
     # check the typology of the segments:
     # positive post-disturbance slope
     postChck <- ((tsi[tbp+3] - tsi[tbp+2]) > 0)
@@ -132,7 +132,7 @@ calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, n
       brkChck <- TRUE
     }
     if(!chkBrk){brkChck = T}
-    
+
     if(timeChck & postChck & distChck & brkChck){
       # Calculate Frazier recovery metrics on BFAST trend component
       frz <- calcFrazier(as.numeric(tsi), (tbp+1), obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart)
@@ -147,35 +147,3 @@ calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, n
 frz
 }
 
-ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
-
-load(file.path(ifolder, 'reg_test2.Rdata'))
-load(file.path(ifolder, 'seg_test2.Rdata'))
-
-dts <- as.Date(names(df_out)[-c(1:5)])
-
-obspyr <- 12
-nPre <- 2
-nDist <- 1
-nPost <- 2
-nPostStart <- 4
-nDelta <- 2
-nDeltaStart <- 4
-maxBreak <- F
-chkBrk <- T
-timeThres <- 1.5
-
-tst <- lapply(1:50,function(i){
-  dtdist <- as.Date(paste0(as.character(2000+df_out$lossyr[i]),'-06-01'))
-  tdist <- which(dts == dtdist)
-  tsi <- seg[[i]]$trend
-  tbp <- seg[[i]]$breakpoints
-  tbp <- tbp[tbp!=0 & tbp!=length(tsi)]
-  calcRecMetrics(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
-                                                  tbp, maxBreak, chkBrk,timeThres)})
-
-df_fr <- data.frame(do.call(rbind.data.frame, tst))
-df_rec <- cbind(df_out[c(1:50),c(1:5)], df_fr)
-
-save(df_rec, file = file.path(ifolder, 'rec_test2.Rdata'))
-  

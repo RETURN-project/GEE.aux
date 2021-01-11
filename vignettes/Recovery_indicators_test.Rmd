@@ -9,8 +9,80 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## inputs
+```{r inputs}
+# path to folder with data
+ifolder <- '/inst/testdata/'
+# path to folder where outputs should be stored
+ofolder <- '/inst/testdata/'
+# name of data files
+ifiles <- c('test2.csv')
+```
 
-```{r cars}
+```{r tidy_data}
+for (file in ifiles){
+  ifile <- file.path(ifolder,file)
+  x <- readLines(ifile)
+  col_names <- c("id","ecoReg","lossyr","coords","img_names","series")
+  dat_tidy <- tidy_data(x,col_names)
+  write_csv(dat_tidy, file.path(ofolder, paste0('tidy_',file)))
+}
+```
+
+```{r inputs}
+# library(tidyverse)
+# # setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+# input_folder <- "/home/wanda/Documents/data/upscaleRecovery/test"
+# output_folder <- "/home/wanda/Documents/data/upscaleRecovery/test"
+# file_list <- "test2.csv"#list.files(path=input_folder,pattern="test2.csv")
+# 
+# 
+# for (file in file_list){
+#   a <- str_split(tools::file_path_sans_ext(file),"_")%>%unlist
+#   tmpf <- tempfile()
+#   x <- readLines(file.path(input_folder,file))
+#   y <-  substr(x,2,str_length(x)-1)  
+#   z <- gsub( "]", "[", y )
+#   z <- z[-1]
+#   cat(z, file=tmpf, sep="\n")
+#   col_names <- c("id","ecoReg","lossyr","coords","img_names","series")
+#   # 
+#   dat_orig <- read_csv(tmpf, quote="[",
+#                         col_names=col_names)
+#   # count number of images per series
+#   dat_format <- dat_orig%>%
+#     mutate(nimg=str_count(img_names,",")+1)
+# 
+#   extract_date <- function(x){
+#     # stl <- str_count(x)
+#     # substr(x,20,27)
+#     sp <- strsplit(x,'_')
+#     L <- lapply(sp, function(x) {
+#       if(length(x) > 1){x[length(x)-1]
+#         } else{x[1]}} )
+#     # sp[[1]][]
+#     unlist(L)
+#   }
+#   
+#   
+#   
+#   # x <- dat_format$img_names[18]
+#   
+#   max_img <- max(dat_format$nimg)
+#   nvars_img=sprintf("p__%04i",seq(from=1,to=max_img))
+#   nvars_1=sprintf("series__%04i",seq(from=1,to=max_img))
+#   
+#   dat_format_img <- dat_format%>%
+#     separate(img_names,into=nvars_img,sep=", ",convert=TRUE)%>%
+#     separate(series,into=nvars_1,sep=", ",convert=TRUE)%>%
+#     mutate_at(vars(starts_with("p__")),extract_date)%>%
+#     mutate_all(~str_replace(.,"None","NA"))
+#   
+#   write_csv(dat_format_img, file.path(output_folder,paste0('tidy_',file)))
+#   
+# }
+# 
+# ## 
 
 ```
 

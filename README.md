@@ -1,9 +1,9 @@
 # Calculate recovery metrics from sampled time series (GEE)
 This repository contains JavaScript, python and R code and follows this workflow: 
-- Generate an image with pixels of interest (/inst/Javascript/SampleArea)
-- Sample point locations using a stratified random sampling from the pixels of interest (/inst/JavaScript/SamplePoints)
-- Extract time series and auxiliary information from the sampled locations to a csv file (/python/dllLandsat.py)
-- Prepare data and derive recovery metrics (/vignettes/Recovery_indicators_test.Rmd):
+- Javascript: Generate an image with pixels of interest (/inst/Javascript/SampleArea)
+- Javascript: Sample point locations using a stratified random sampling from the pixels of interest (/inst/JavaScript/SamplePoints)
+- Python: Extract time series and auxiliary information from the sampled locations to a csv file (/inst/python/dllLandsat.py)
+- R: Prepare data and derive recovery metrics (/vignettes/Recovery_indicators_test.Rmd):
     - Generate a dataframe with data extracted from the GEE
     - Convert the irregular time series to regular ones
     - Fit piecewise regression (segmentation of the time series)

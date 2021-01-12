@@ -1,15 +1,26 @@
 
-#' Title
+#' YrYr recovery function
 #'
-#' @param ts
-#' @param ys
-#' @param tpert
-#' @param deltat
+#' Year on year average
 #'
-#' @return
+#' @param ts Vector containing the times (same size as ys)
+#' @param ys Vector containing the values (same size as ts)
+#' @param tpert Time of the perturbation. Default set to 0 yr
+#' @param deltat Reference recovery time (in years). Default set to 5 yr
+#'
+#' @return The YrYr parameter for the given time series
 #' @export
 #'
+#' @references Frazier, R. J., Coops, N. C., Wulder, M. A., Hermosilla, T., & White, J. C. (2018).
+#' Analyzing spatial and temporal variability in short-term rates of post-fire vegetation return
+#' from Landsat time series. Remote Sensing of Environment, 205, 32–45.
+#' \url{https://doi.org/10.1016/j.rse.2017.11.007}
+#'
 #' @examples
+#' # Generate an example time series
+#' ts <- seq(-2, 10, by = 0.1) # as a vector of times
+#' ys <- 3 + 2 * ts # plus a vector of values
+#' yryr(ts, ys)
 yryr <- function(ts, ys, tpert=0, deltat=5) {
   # Check input
   if ((min(tpert) < min(ts, na.rm = TRUE)) || (min(tpert) + max(deltat) > max(ts, na.rm = TRUE))) {
@@ -29,18 +40,29 @@ yryr <- function(ts, ys, tpert=0, deltat=5) {
   return(dy / dx)
 }
 
-#' Title
+#' R80p recovery function
 #'
-#' @param ts
-#' @param ys
-#' @param r
-#' @param ts_pre
-#' @param ts_post
+#' Ratio of Eighty Percent (R80P). The ratios can be customized.
 #'
-#' @return
+#' @param ts Vector containing the times (same size as ys). Perturbation assumed to happen at 0
+#' @param ys Vector containing the values (same size as ts)
+#' @param r Ratio. Default set to 0.8
+#' @param ts_pre Sampling times for estimating Vpre. Default set to -1
+#' @param ts_post Sampling times for estimating Vpost. Default set to c(4, 5)
+#'
+#' @return The R80p indicator (R_r_p if r != 0.8 is provided)
 #' @export
 #'
+#' @references Frazier, R. J., Coops, N. C., Wulder, M. A., Hermosilla, T., & White, J. C. (2018).
+#' Analyzing spatial and temporal variability in short-term rates of post-fire vegetation return
+#' from Landsat time series. Remote Sensing of Environment, 205, 32–45.
+#' \url{https://doi.org/10.1016/j.rse.2017.11.007}
+#'
 #' @examples
+#' # Generate an example time series
+#' ts <- seq(-2, 10, by = 0.1) # as a vector of times
+#' ys <- exponential(ts, pert = -2, offset = 1, thalf = 0.25) # plus a vector of values
+#' r80p(ts, ys)
 r80p <- function(ts, ys, r=0.8, ts_pre=c(-1,-2), ts_post=c(4, 5)) {
   # Auxiliary interpolation function. Given a time, returns the corresponding value.
   # If the time is in ts, returns the corresponding ys. If the time is not in ts,
@@ -59,18 +81,29 @@ r80p <- function(ts, ys, r=0.8, ts_pre=c(-1,-2), ts_post=c(4, 5)) {
   return(Vpost / (Vpre * r))
 }
 
-#' Title
+#' RRI recovery function
 #'
-#' @param ts
-#' @param ys
-#' @param tpert
-#' @param ts_pre
-#' @param ts_post
+#' Relative Recovery Indicator
 #'
-#' @return
+#' @param ts Vector containing the times (same size as ys). Perturbation assumed to happen at 0
+#' @param ys Vector containing the values (same size as ts)
+#' @param ts_pre Sampling times for estimating Vpre. Default set to -1
+#' @param ts_post Sampling times for estimating Vpost. Default set to c(4, 5)
+#' @param tpert Time of the perturbation. Default set to 0 yr
+#'
+#' @return The RRI indicator
 #' @export
 #'
+#' @references Frazier, R. J., Coops, N. C., Wulder, M. A., Hermosilla, T., & White, J. C. (2018).
+#' Analyzing spatial and temporal variability in short-term rates of post-fire vegetation return
+#' from Landsat time series. Remote Sensing of Environment, 205, 32–45.
+#' \url{https://doi.org/10.1016/j.rse.2017.11.007}
+#'
 #' @examples
+#' # Generate an example time series
+#' ts <- seq(-2, 10, by = 0.1) # as a vector of times
+#' ys <- exponential(ts, pert = -2, offset = 1, thalf = 0.25) # plus a vector of values
+#' rri(ts, ys)
 rri <- function(ts, ys, tpert=0, ts_pre=-1, ts_post=c(4, 5)) {
   # Auxiliary interpolation function. Given a time, returns the corresponding value.
   # If the time is in ts, returns the corresponding ys. If the time is not in ts,
@@ -95,22 +128,29 @@ rri <- function(ts, ys, tpert=0, ts_pre=-1, ts_post=c(4, 5)) {
   return(delta_rec / delta_dist)
 }
 
-#' Title
+#' Calculate recovery metrics
 #'
-#' @param tsio
-#' @param tdist
-#' @param obspyr
-#' @param nPre
-#' @param nDist
-#' @param nPost
-#' @param nPostStart
-#' @param nDelta
-#' @param nDeltaStart
+#' Calculate recovery metrics from a time series with known disturbance date. The calcFrazier function derives the RRI, R80P and YrYr recovery indicators,
+#' defined by Frazier et al. (2018). The indicators are originally developed for annual long-term time series of optical vegetation indices.
+#' Yet, in order to be able to derive the indicators as well for dense and/or short time series, a modified version is suggested.
+#' Here, the user can define the time period before, during and after the disturbance that is used to derive the indicators.
+#' To reduce the interference of the seasonal pattern of dense time series, the chosen time period should cover blocks of n years.
+#' (Frazier, R. J., Coops, N. C., Wulder, M. A., Hermosilla, T., & White, J. C. (2018). Analyzing spatial and temporal variability in short-term rates
+#' of post-fire vegetation return from Landsat time series. Remote Sensing of Environment, 205, 32-45.)
 #'
-#' @return
+#' @param tsio vector of observations (time series with a fixed observation frequency)
+#' @param tdist observation number of disturbance, indicating the timing of the disturbance
+#' @param obspyr number of observations per year
+#' @param nPre number of years prior to the disturbance used to calculate the pre-disturbance value
+#' @param nPost number of years used to calculate the post-disturbance value
+#' @param nPostStart indicates the start of the post-disturbance period (expressed as number of years after the disturbance)
+#' @param nDelta number of years used to calculate the post-disturbance value for the YrYr metric
+#' @param nDeltaStart indicates the start of the post-disturbance period for the YrYr metric (expressed as number of years after the disturbance)
+#' @param nDist number of years used to quantify the state during the disturbance
+#'
+#' @return a list containing the RRI recovery indicator, R80p recovery indicator and YrYr recovery indicator
 #' @export
 #'
-#' @examples
 calcFrazier <- function(tsio, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart){
   # check if there are enough observations before and after the disturbance to calculate the metrics
   if ( (tdist > (nPre*obspyr) ) & ( (tdist + ((nPost+nPostStart)*obspyr) - 2) < length(tsio)  ) & ( sum(!is.na(tsio)) > 2) ) {
@@ -152,24 +192,23 @@ calcFrazier <- function(tsio, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDe
 
 #' Calculate recovery metrics
 #'
-#' @param tsi
-#' @param tdist
-#' @param obspyr
-#' @param nPre
-#' @param nDist
-#' @param nPost
-#' @param nPostStart
-#' @param nDelta
-#' @param nDeltaStart
-#' @param tbp
-#' @param maxBreak
-#' @param chkBrk
-#' @param timeThres
+#' @param tsi vector of observations (time series with a fixed observation frequency)
+#' @param tdist observation number of disturbance, indicating the timing of the disturbance
+#' @param obspyr number of observations per year
+#' @param nPre number of years prior to the disturbance used to calculate the pre-disturbance value
+#' @param nDist number of years used to quantify the state during the disturbance
+#' @param nPost number of years used to calculate the post-disturbance value
+#' @param nPostStart indicates the start of the post-disturbance period (expressed as number of years after the disturbance)
+#' @param nDelta number of years used to calculate the post-disturbance value for the YrYr metric
+#' @param nDeltaStart indicates the start of the post-disturbance period for the YrYr metric (expressed as number of years after the disturbance)
+#' @param tbp breakpoints in time series
+#' @param maxBreak should the major observed break be used to calculate recovery metrics? Otherwise the break closed to tdist is used.
+#' @param chkBrk should time series be checked for breaks within the post- or pre-disturbance period?
+#' @param timeThres the maximum allowed time difference between the observed break and the disturbance [years]
 #'
 #' @return
 #' @export
 #'
-#' @examples
 calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
                        tbp, maxBreak, chkBrk = F, timeThres){
   if(!is.na(tbp[1])){

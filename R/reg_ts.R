@@ -37,12 +37,14 @@ toRegularTS <- function(tsi, dts, fun, resol){
 }
 
 
-#' Title
+#' Get regular time series
 #'
-#' @param dts
-#' @param obs
+#' Convert irregular time series with missing values to a regular one
 #'
-#' @return
+#' @param dts vector of dates (formatted as strings YYYYMMDD)
+#' @param obs vector of observations
+#'
+#' @return regular time series
 #' @export
 #'
 getRegularTS <- function(dts,obs){

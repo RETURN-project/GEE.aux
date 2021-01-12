@@ -1,14 +1,15 @@
-#' Title
+#' Perform piecewise regression
 #'
-#' @param tsio
-#' @param obspyr
-#' @param h
-#' @param seas
+#' @param tsio time series (vector of observations)
+#' @param obspyr number of observations per year
+#' @param h minimum segment size - as a fraction of the total number of observations
+#' @param seas include seasonal component
 #'
-#' @return
+#' @return list of breakpoints, trend, loglikelihood, and AIC
 #' @export
+#' @import strucchange
+#' @import bfast
 #'
-#' @examples
 getSegments <- function(tsio, obspyr, h = 0.15, seas = T){
   # Create time series object, needed as input for BFAST
   tsi <- ts(tsio, frequency = obspyr)

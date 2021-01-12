@@ -1,21 +1,20 @@
-#' Title
+#' Plot recovery metrics
 #'
-#' @param dts
-#' @param obsi
-#' @param main
-#' @param lossdt_start
-#' @param lossdt_end
-#' @param lossdt_start1
-#' @param lossdt_end1
-#' @param trend
-#' @param met_rri
-#' @param met_r80p
-#' @param met_yryr
+#' @param dts vector of dates
+#' @param obsi time series - vector of observations
+#' @param main title of the plot (string)
+#' @param lossdt_start start uncertainty window of disturbance date
+#' @param lossdt_end end uncertainty window of disturbance date
+#' @param lossdt_start1 start date for time window of accepted breaks
+#' @param lossdt_end1 end date for time window of accepted breaks
+#' @param trend fitted trend component - vector of observations
+#' @param met_rri derived RRI metric
+#' @param met_r80p derived R80p metric
+#' @param met_yryr derived YrYr metric
 #'
-#' @return
+#' @return plot
 #' @export
 #'
-#' @examples
 plot_aux <- function(dts, obsi,main, lossdt_start,lossdt_end,lossdt_start1,lossdt_end1,
                      trend,met_rri,met_r80p,met_yryr){
   plot(dts,obsi, xlab = 'Time', ylab = 'NBR [-]', main = paste0(id))

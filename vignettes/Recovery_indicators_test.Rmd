@@ -32,7 +32,7 @@ nPost <- 2
 nPostStart <- 4
 nDelta <- 2
 nDeltaStart <- 4
-maxBreak <- F
+maxBreak <- T
 chkBrk <- T
 timeThres <- 1.5
 ```
@@ -160,7 +160,9 @@ dat <- getPlotData(id)
 plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
            dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
 
-id <- which(df_rec$RRI == median(df_rec$RRI, na.rm = T))
+RRI_vals <- df_rec$RRI[!is.na(df_rec$RRI)]
+RRI_med <- RRI_vals[rank(RRI_vals) == floor(length(RRI_vals)/2)]
+id <- which(df_rec$RRI == RRI_med)
 dat <- getPlotData(id)
 plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
            dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
@@ -176,7 +178,9 @@ dat <- getPlotData(id)
 plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
            dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
 
-id <- which(df_rec$R80P == median(df_rec$R80P, na.rm = T))
+R80P_vals <- df_rec$R80P[!is.na(df_rec$R80P)]
+R80P_med <- R80P_vals[rank(R80P_vals) == floor(length(R80P_vals)/2)]
+id <- which(df_rec$R80P == R80P_med)
 dat <- getPlotData(id)
 plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
            dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)

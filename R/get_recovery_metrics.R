@@ -217,14 +217,17 @@ calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, n
       # Find the major break
       dbr <- trf[tbp+1]-trf[tbp]
       tbp <- tbp[which(abs(dbr) == max(abs(dbr)))]
+      tbp <- tbp[1]
     }else{
       # Use the break closest to the disturbance date
       dbr <- tbp-tdist
       tbp <- tbp[which(abs(dbr) == min(abs(dbr)))]
+      tbp <- tbp[1]
     }
 
     # check the time period between the break and the disturbance
-    timeChck <- ((min(abs(dbr))/obspyr) < timeThres)
+    deltat <- tbp-tdist
+    timeChck <- ((abs(deltat)/obspyr) < timeThres)
 
     # check the typology of the segments:
     # positive post-disturbance slope

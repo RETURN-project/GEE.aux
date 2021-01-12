@@ -1,4 +1,15 @@
 
+#' Title
+#'
+#' @param ts
+#' @param ys
+#' @param tpert
+#' @param deltat
+#'
+#' @return
+#' @export
+#'
+#' @examples
 yryr <- function(ts, ys, tpert=0, deltat=5) {
   # Check input
   if ((min(tpert) < min(ts, na.rm = TRUE)) || (min(tpert) + max(deltat) > max(ts, na.rm = TRUE))) {
@@ -18,6 +29,18 @@ yryr <- function(ts, ys, tpert=0, deltat=5) {
   return(dy / dx)
 }
 
+#' Title
+#'
+#' @param ts
+#' @param ys
+#' @param r
+#' @param ts_pre
+#' @param ts_post
+#'
+#' @return
+#' @export
+#'
+#' @examples
 r80p <- function(ts, ys, r=0.8, ts_pre=c(-1,-2), ts_post=c(4, 5)) {
   # Auxiliary interpolation function. Given a time, returns the corresponding value.
   # If the time is in ts, returns the corresponding ys. If the time is not in ts,
@@ -36,6 +59,18 @@ r80p <- function(ts, ys, r=0.8, ts_pre=c(-1,-2), ts_post=c(4, 5)) {
   return(Vpost / (Vpre * r))
 }
 
+#' Title
+#'
+#' @param ts
+#' @param ys
+#' @param tpert
+#' @param ts_pre
+#' @param ts_post
+#'
+#' @return
+#' @export
+#'
+#' @examples
 rri <- function(ts, ys, tpert=0, ts_pre=-1, ts_post=c(4, 5)) {
   # Auxiliary interpolation function. Given a time, returns the corresponding value.
   # If the time is in ts, returns the corresponding ys. If the time is not in ts,
@@ -60,6 +95,22 @@ rri <- function(ts, ys, tpert=0, ts_pre=-1, ts_post=c(4, 5)) {
   return(delta_rec / delta_dist)
 }
 
+#' Title
+#'
+#' @param tsio
+#' @param tdist
+#' @param obspyr
+#' @param nPre
+#' @param nDist
+#' @param nPost
+#' @param nPostStart
+#' @param nDelta
+#' @param nDeltaStart
+#'
+#' @return
+#' @export
+#'
+#' @examples
 calcFrazier <- function(tsio, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart){
   # check if there are enough observations before and after the disturbance to calculate the metrics
   if ( (tdist > (nPre*obspyr) ) & ( (tdist + ((nPost+nPostStart)*obspyr) - 2) < length(tsio)  ) & ( sum(!is.na(tsio)) > 2) ) {
@@ -99,7 +150,26 @@ calcFrazier <- function(tsio, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDe
   lst
 }
 
-# calculate recovery metrics
+#' Calculate recovery metrics
+#'
+#' @param tsi
+#' @param tdist
+#' @param obspyr
+#' @param nPre
+#' @param nDist
+#' @param nPost
+#' @param nPostStart
+#' @param nDelta
+#' @param nDeltaStart
+#' @param tbp
+#' @param maxBreak
+#' @param chkBrk
+#' @param timeThres
+#'
+#' @return
+#' @export
+#'
+#' @examples
 calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
                        tbp, maxBreak, chkBrk = F, timeThres){
   if(!is.na(tbp[1])){
@@ -133,7 +203,18 @@ calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, n
     }
     if(!chkBrk){brkChck = T}
 
-    if(timeChck & postChck & distChck & brkChck){
+    # no negative break in pre-disturbance period
+    brkthres <- (nPre*obspyr) #post-disturbance period used to assess recovery
+    if(any((totbp<tbp) & (totbp>(tbp-brkthres)))){
+      prebr <- totbp[(totbp<tbp) & (totbp>(tbp-brkthres))]
+      predbr <- tsi[prebr+1]-tsi[prebr]
+      brkChckPre <- !any((predbr< -0.1))
+    }else{
+      brkChckPre <- TRUE
+    }
+    if(!chkBrk){brkChckPre = T}
+
+    if(timeChck & postChck & distChck & brkChck & brkChckPre){
       # Calculate Frazier recovery metrics on BFAST trend component
       frz <- calcFrazier(as.numeric(tsi), (tbp+1), obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart)
     }else{

@@ -90,65 +90,116 @@ save(df_out, file = file.path(ifolder, paste0('reg_', tools::file_path_sans_ext(
 # Piecewise regression
 
 ```{r segment}
-nts <- dim(df_out)[1]# number of pixels to be processed
-  
-seg <- lapply(1:nts, function(i){getSegments(as.numeric(df_out[i,-c(1:5)]),12,0.15,T)})# fit piecewise regression for each pixel
-save(seg, file = file.path(ifolder, paste0('seg_', tools::file_path_sans_ext(ifile), '.Rdata')))# save result
+# number of pixels to be processed
+nts <- dim(df_out)[1]
+# fit piecewise regression for each pixel
+seg <- lapply(1:nts, function(i){getSegments(as.numeric(df_out[i,-c(1:5)]),12,0.15,T)})
+# save result
+save(seg, file = file.path(ifolder, paste0('seg_', tools::file_path_sans_ext(ifile), '.Rdata')))
 
 ```
 
 # Calculate recovery metrics
 
-```{recovery}
-# ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
+```{r recovery}
 
-# load(file.path(ifolder, 'reg_test2.Rdata'))
-# load(file.path(ifolder, 'seg_test2.Rdata'))
-
-# dts <- as.Date(names(df_out)[-c(1:5)])
-
-tst <-function(i){
-  dtdist <- as.Date(paste0(as.character(2000+df_out$lossyr[i]),'-06-01'))
+# calculate recovery metrics
+df_fr <- data.frame(do.call(rbind.data.frame, lapply(1:nts,function(i){
+  # get observation number of reported disturbance
+  dtdist <- as.Date(paste0(as.character(2000+as.numeric(df_out$lossyr[i])),'-06-01'))
   tdist <- which(dts == dtdist)
+  # trend component of piecewise regression
   tsi <- seg[[i]]$trend
+  # breakpoints of piecewise regression
   tbp <- seg[[i]]$breakpoints
   tbp <- tbp[tbp!=0 & tbp!=length(tsi)]
+  # calculate recovery metrics
   calcRecMetrics(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
-                                                  tbp, maxBreak, chkBrk,timeThres)}
-
- 
-
-df_fr <- data.frame(do.call(rbind.data.frame, lapply(1:nts,tst)))
-df_rec <- cbind(df_out[c(1:50),c(1:5)], df_fr)
-
-save(df_rec, file = file.path(ifolder, 'rec_test2.Rdata'))
+                                                  tbp, maxBreak, chkBrk, timeThres)})))
+# add auxiliary data to the dataframe
+df_rec <- cbind(dat_tidy[,auxcols], df_fr)
+# save result
+save(df_rec, file = file.path(ifolder,  paste0('rec_', tools::file_path_sans_ext(ifile), '.Rdata')))
 ```
 
 # Plot
 
-```{plot}
-# ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
+```{r plot}
 
-# load(file.path(ifolder, 'reg_test2.Rdata'))
-# load(file.path(ifolder, 'seg_test2.Rdata'))
-# load(file.path(ifolder, 'rec_test2.Rdata'))
+getPlotData <- function(id){
+  distyr <- as.numeric(df_out$lossyr[id])
+  lossdt_start <- as.Date(paste0(as.character(2000+distyr),'-01-01'))
+  lossdt_end <- as.Date(paste0(as.character(2000+distyr),'-12-31'))
+  lossdt_start1 <- as.Date(paste0(as.character(2000+distyr-1),'-01-01'))
+  lossdt_end1 <- as.Date(paste0(as.character(2000+distyr+1),'-12-31'))
 
-# dts <- as.Date(names(df_out)[-c(1:5)])
-
-# helper function
-
-for (id in 1:50){
-  PlotData(id, df_out, seg, df_rec)
+  obsi <- df_out[id,-c(1:5)]
+  trend <- seg[[id]]$trend
+  met_rri <- df_rec$RRI[id]
+  met_r80p <- df_rec$R80P[id]
+  met_yryr <- df_rec$YrYr[id]
+  out <- list(distyr, lossdt_start,lossdt_end,lossdt_start1,lossdt_end1,obsi,trend,met_rri,met_r80p,met_yryr)
+  names(out)<- c('distyr', 'lossdt_start','lossdt_end','lossdt_start1','lossdt_end1','obsi','trend','met_rri','met_r80p','met_yryr')
+  return(out)
 }
+
+# for (id in 1:10){
+#   dat <- getPlotData(id)
+#   plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+#            dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+# }
+
+# fraction of time series with recovery metric that does not equal NA
+fracRRI <- sum(!is.na(df_rec$RRI))/length(df_rec$RRI)
+fracR80p <- sum(!is.na(df_rec$R80P))/length(df_rec$R80P)
+fracYrYr <- sum(!is.na(df_rec$YrYr))/length(df_rec$YrYr)
 
 # plot time series with max, median and min RRI
 id <- which(df_rec$RRI == max(df_rec$RRI, na.rm = T))
-PlotData(id, df_out, seg, df_rec)
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
 
 id <- which(df_rec$RRI == median(df_rec$RRI, na.rm = T))
-PlotData(id, df_out, seg, df_rec)
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
 
 id <- which(df_rec$RRI == min(df_rec$RRI, na.rm = T))
-PlotData(id, df_out, seg, df_rec)
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+# plot time series with max, median and min R80p
+id <- which(df_rec$R80P == max(df_rec$R80P, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+id <- which(df_rec$R80P == median(df_rec$R80P, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+id <- which(df_rec$R80P == min(df_rec$R80P, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+# plot time series with max, median and min YrYr
+id <- which(df_rec$YrYr == max(df_rec$YrYr, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+id <- which(df_rec$YrYr == median(df_rec$YrYr, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+id <- which(df_rec$YrYr == min(df_rec$YrYr, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
 
 ```

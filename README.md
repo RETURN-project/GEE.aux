@@ -1,3 +1,8 @@
+[![Build Status](https://github.com/RETURN-project/GEE.aux/workflows/R-CMD-check/badge.svg?branch=master)](https://github.com/RETURN-project/GEE.aux/actions)
+[![codecov](https://codecov.io/gh/RETURN-project/GEE.aux/graph/badge.svg)](https://codecov.io/gh/RETURN-project/GEE.aux)
+[![codecov](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/)
+[![License: MIT](https://img.shields.io/badge/License-Apache-yellow.svg)](https://opensource.org/licenses/Apache)
+
 # Calculate recovery metrics from sampled time series (GEE)
 This repository contains JavaScript, python and R code and follows this workflow: 
 - Javascript: Generate an image with pixels of interest (/inst/Javascript/SampleArea)

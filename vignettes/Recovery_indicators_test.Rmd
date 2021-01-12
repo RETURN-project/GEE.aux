@@ -10,94 +10,20 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(zoo)
 library(GEE.aux)
+library(tidyverse)
+
+library(bfast)
+library(strucchange)
 ```
 
-## inputs
+## User inputs
 ```{r inputs}
 # path to folder with data
 ifolder <- '../inst/testdata/'
 # path to folder where outputs should be stored
 ofolder <- '../inst/testdata/'
 # name of data files
-ifiles <- c('test2.csv')
-```
-
-```{r tidy_data}
-for (file in ifiles){
-  # get full path of the input file
-  ifile <- file.path(ifolder,file)
-  # read the input file
-  x <- readLines(ifile)
-  # column names of the data 
-  col_names <- c("id","ecoReg","lossyr","coords","img_names","series")
-  # generate a dataframe from the input data 
-  dat_tidy <- tidy_data(x,col_names)
-  # write the dataframe to a csv file
-  write_csv(dat_tidy, file.path(ofolder, paste0('tidy_',file)))
-}
-```
-
-```{r regular_ts}
-# column names of the dataframe
-cols <- names(dat_tidy)# all column names
-dtcols <- cols[startsWith(cols,"p__")]# column names of the columns containing the observation dates
-obscols <- cols[startsWith(cols,"series__")]# column names of the columns containing the observations
-auxcols <- cols[!startsWith(cols,"p__") & !startsWith(cols,"series__")]# column names of the columns containing the auxiliary information
-
-
-# set desired start and end dates of the regular time series
-mnyr <- format(as.Date(as.character(min(dat_tidy[,dtcols], na.rm = T)),'%Y%m%d'),'%Y')# start year of the irregular time series
-mxyr <- format(as.Date(as.character(max(dat_tidy[,dtcols], na.rm = T)),'%Y%m%d'),'%Y')# end year of the irregular time series
-startdt <- as.Date(paste0(mnyr,'-01-01'))# desired start date of regular time series
-enddt <- as.Date(paste0(mxyr,'-12-31'))# desired end date of regular time series
-dts <- seq(startdt,enddt,by='month')# dates of regular series
-
-# extract dates and associated observations of the irregular time series
-# add a NA observation at the desired start and end date of the regular series
-# the latter is required to ensure that the time span of the regular series is fixed between these two dates
-dtsi <- dat_tidy[,dtcols]# dates of the irregular time series
-dtsi <- cbind(rep(as.numeric(paste0(mnyr,'0101')),dim(dtsi)[1]),rep(as.numeric(paste0(mxyr,'1231'),dim(dtsi)[1])),dtsi)# dates, extended with desired start and end date
-obsi <- dat[,obscols]# observations of the irregular time series
-obsi <- cbind(rep(NA,dim(obsi)[1]),rep(NA,dim(obsi)[1]),obsi)# observations, extended with two NA values
-
-test <- function(dts,obs){
-  obs <- obs[!is.na(dts)]
-  dts <- dts[!is.na(dts)]
-  dts <- as.Date(as.character(dts),'%Y%m%d')
-  regts <- toRegularTS(obs, dts, 'mean', 'monthly')
-} 
-
-# Generate a regular time series for each pixel
-out <- sapply(1:dim(obsi)[1], function(i) test(dtsi[i,], obsi[i,]))# generate a regular time series
-df_out <- as.data.frame(t(out))# convert to a dataframe
-names(df_out) <- dts# add dates of observations to column names
-df_out <- cbind(dat_tidy[,auxcols],df_out)# add auxiliary data to dataframe
-save(df_out, file = file.path(ifolder, 'reg_test2.Rdata'))# save the result
-
-```
-
-```{r segment}
-library(bfast)
-library(strucchange)
-
-# ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
-# ifile <- 'reg_test2.Rdata'
-
-# load(file.path(ifolder, ifile))
-nts <- dim(df_out)[1]# number of pixels to be processed
-  
-seg <- lapply(1:nts, function(i){getSegments(as.numeric(df_out[i,-c(1:5)]),12,0.15,T)})# fit piecewise regression for each pixel
-save(seg, file = file.path(ifolder, 'seg_test2.Rdata'))# save result
-
-```
-
-```{recovery}
-# ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
-
-# load(file.path(ifolder, 'reg_test2.Rdata'))
-# load(file.path(ifolder, 'seg_test2.Rdata'))
-
-# dts <- as.Date(names(df_out)[-c(1:5)])
+ifile <- 'test2.csv'
 
 obspyr <- 12
 nPre <- 2
@@ -109,30 +35,105 @@ nDeltaStart <- 4
 maxBreak <- F
 chkBrk <- T
 timeThres <- 1.5
+```
 
-tst <- lapply(1:50,function(i){
+# Read data into tidy data frame
+```{r tidy_data}
+  # get full path of the input file
+  pth <- file.path(ifolder,ifile)
+  # read the input file
+  x <- readLines(pth)
+  # column names of the data 
+  col_names <- c("id","ecoReg","lossyr","coords","img_names","series")
+  # generate a dataframe from the input data 
+  dat_tidy <- tidy_data(x,col_names)
+  # write the dataframe to a csv file
+  write_csv(dat_tidy, file.path(ofolder, paste0('tidy_',ifile)))
+
+```
+# convert the irregular time series to regular ones
+
+```{r regular_ts}
+# column names of the dataframe
+cols <- names(dat_tidy)# all column names
+dtcols <- cols[startsWith(cols,"p__")]# column names of the columns containing the observation dates
+obscols <- cols[startsWith(cols,"series__")]# column names of the columns containing the observations
+auxcols <- cols[!startsWith(cols,"p__") & !startsWith(cols,"series__")]# column names of the columns containing the auxiliary information
+
+
+# set desired start and end dates of the regular time series
+dat_tidy <- dat_tidy%>%mutate_at(dtcols,function(x){as.numeric(x)})# make dates numeric
+mnyr <- format(as.Date(as.character(min(dat_tidy[,dtcols], na.rm = T)),'%Y%m%d'),'%Y')# start year of the irregular time series
+mxyr <- format(as.Date(as.character(max(dat_tidy[,dtcols], na.rm = T)),'%Y%m%d'),'%Y')# end year of the irregular time series
+startdt <- as.Date(paste0(mnyr,'-01-01'))# desired start date of regular time series
+enddt <- as.Date(paste0(mxyr,'-12-31'))# desired end date of regular time series
+dts <- seq(startdt,enddt,by='month')# dates of regular series
+
+# extract dates and associated observations of the irregular time series
+# add a NA observation at the desired start and end date of the regular series
+# the latter is required to ensure that the time span of the regular series is fixed between these two dates
+dtsi <- dat_tidy[,dtcols]# dates of the irregular time series
+dtsi <- cbind(rep(as.numeric(paste0(mnyr,'0101')),dim(dtsi)[1]),rep(as.numeric(paste0(mxyr,'1231'),dim(dtsi)[1])),dtsi)# dates, extended with desired start and end date
+dat_tidy <- dat_tidy%>%mutate_at(obscols,function(x){as.numeric(x)})# make dates numeric
+obsi <- dat_tidy[,obscols]# observations of the irregular time series
+obsi <- cbind(rep(NA,dim(obsi)[1]),rep(NA,dim(obsi)[1]),obsi)# observations, extended with two NA values
+
+# Generate a regular time series for each pixel
+out <- sapply(1:dim(obsi)[1], function(i) getRegularTS(dtsi[i,], obsi[i,]))# generate a regular time series
+df_out <- as.data.frame(t(out))# convert to a dataframe
+names(df_out) <- dts# add dates of observations to column names
+df_out <- cbind(dat_tidy[,auxcols],df_out)# add auxiliary data to dataframe
+save(df_out, file = file.path(ifolder, paste0('reg_', tools::file_path_sans_ext(ifile), '.Rdata')))# save the result
+
+```
+
+# Piecewise regression
+
+```{r segment}
+nts <- dim(df_out)[1]# number of pixels to be processed
+  
+seg <- lapply(1:nts, function(i){getSegments(as.numeric(df_out[i,-c(1:5)]),12,0.15,T)})# fit piecewise regression for each pixel
+save(seg, file = file.path(ifolder, paste0('seg_', tools::file_path_sans_ext(ifile), '.Rdata')))# save result
+
+```
+
+# Calculate recovery metrics
+
+```{recovery}
+# ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
+
+# load(file.path(ifolder, 'reg_test2.Rdata'))
+# load(file.path(ifolder, 'seg_test2.Rdata'))
+
+# dts <- as.Date(names(df_out)[-c(1:5)])
+
+tst <-function(i){
   dtdist <- as.Date(paste0(as.character(2000+df_out$lossyr[i]),'-06-01'))
   tdist <- which(dts == dtdist)
   tsi <- seg[[i]]$trend
   tbp <- seg[[i]]$breakpoints
   tbp <- tbp[tbp!=0 & tbp!=length(tsi)]
   calcRecMetrics(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
-                                                  tbp, maxBreak, chkBrk,timeThres)})
+                                                  tbp, maxBreak, chkBrk,timeThres)}
 
-df_fr <- data.frame(do.call(rbind.data.frame, tst))
+ 
+
+df_fr <- data.frame(do.call(rbind.data.frame, lapply(1:nts,tst)))
 df_rec <- cbind(df_out[c(1:50),c(1:5)], df_fr)
 
 save(df_rec, file = file.path(ifolder, 'rec_test2.Rdata'))
 ```
 
+# Plot
+
 ```{plot}
-ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
+# ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test'
 
-load(file.path(ifolder, 'reg_test2.Rdata'))
-load(file.path(ifolder, 'seg_test2.Rdata'))
-load(file.path(ifolder, 'rec_test2.Rdata'))
+# load(file.path(ifolder, 'reg_test2.Rdata'))
+# load(file.path(ifolder, 'seg_test2.Rdata'))
+# load(file.path(ifolder, 'rec_test2.Rdata'))
 
-dts <- as.Date(names(df_out)[-c(1:5)])
+# dts <- as.Date(names(df_out)[-c(1:5)])
 
 # helper function
 
@@ -151,61 +152,3 @@ id <- which(df_rec$RRI == min(df_rec$RRI, na.rm = T))
 PlotData(id, df_out, seg, df_rec)
 
 ```
-
-```{r inputs}
-# library(tidyverse)
-# # setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-# input_folder <- "/home/wanda/Documents/data/upscaleRecovery/test"
-# output_folder <- "/home/wanda/Documents/data/upscaleRecovery/test"
-# file_list <- "test2.csv"#list.files(path=input_folder,pattern="test2.csv")
-# 
-# 
-# for (file in file_list){
-#   a <- str_split(tools::file_path_sans_ext(file),"_")%>%unlist
-#   tmpf <- tempfile()
-#   x <- readLines(file.path(input_folder,file))
-#   y <-  substr(x,2,str_length(x)-1)  
-#   z <- gsub( "]", "[", y )
-#   z <- z[-1]
-#   cat(z, file=tmpf, sep="\n")
-#   col_names <- c("id","ecoReg","lossyr","coords","img_names","series")
-#   # 
-#   dat_orig <- read_csv(tmpf, quote="[",
-#                         col_names=col_names)
-#   # count number of images per series
-#   dat_format <- dat_orig%>%
-#     mutate(nimg=str_count(img_names,",")+1)
-# 
-#   extract_date <- function(x){
-#     # stl <- str_count(x)
-#     # substr(x,20,27)
-#     sp <- strsplit(x,'_')
-#     L <- lapply(sp, function(x) {
-#       if(length(x) > 1){x[length(x)-1]
-#         } else{x[1]}} )
-#     # sp[[1]][]
-#     unlist(L)
-#   }
-#   
-#   
-#   
-#   # x <- dat_format$img_names[18]
-#   
-#   max_img <- max(dat_format$nimg)
-#   nvars_img=sprintf("p__%04i",seq(from=1,to=max_img))
-#   nvars_1=sprintf("series__%04i",seq(from=1,to=max_img))
-#   
-#   dat_format_img <- dat_format%>%
-#     separate(img_names,into=nvars_img,sep=", ",convert=TRUE)%>%
-#     separate(series,into=nvars_1,sep=", ",convert=TRUE)%>%
-#     mutate_at(vars(starts_with("p__")),extract_date)%>%
-#     mutate_all(~str_replace(.,"None","NA"))
-#   
-#   write_csv(dat_format_img, file.path(output_folder,paste0('tidy_',file)))
-#   
-# }
-# 
-# ## 
-
-```
-

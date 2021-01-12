@@ -2,6 +2,7 @@
 
 export(PlotData)
 export(extract_date)
+export(getRegularTS)
 export(getSegments)
 export(plot_aux)
 export(tidy_data)

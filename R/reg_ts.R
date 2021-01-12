@@ -35,3 +35,20 @@ toRegularTS <- function(tsi, dts, fun, resol){
   }
   return(mz)
 }
+
+
+#' Title
+#'
+#' @param dts
+#' @param obs
+#'
+#' @return
+#' @export
+#'
+getRegularTS <- function(dts,obs){
+  obs <- obs[!is.na(dts)]
+  dts <- dts[!is.na(dts)]
+  dts <- as.Date(as.character(dts),'%Y%m%d')
+  regts <- toRegularTS(obs, dts, 'mean', 'monthly')
+  return(regts)
+}

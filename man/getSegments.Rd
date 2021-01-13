@@ -2,16 +2,22 @@
 % Please edit documentation in R/get_segments.R
 \name{getSegments}
 \alias{getSegments}
-\title{Title}
+\title{Perform piecewise regression}
 \usage{
 getSegments(tsio, obspyr, h = 0.15, seas = T)
 }
 \arguments{
-\item{seas}{}
+\item{tsio}{time series (vector of observations)}
+
+\item{obspyr}{number of observations per year}
+
+\item{h}{minimum segment size - as a fraction of the total number of observations}
+
+\item{seas}{include seasonal component}
 }
 \value{
-
+list of breakpoints, trend, loglikelihood, and AIC
 }
 \description{
-Title
+Perform piecewise regression
 }

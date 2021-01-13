@@ -2,16 +2,18 @@
 % Please edit documentation in R/reg_ts.R
 \name{getRegularTS}
 \alias{getRegularTS}
-\title{Title}
+\title{Get regular time series}
 \usage{
 getRegularTS(dts, obs)
 }
 \arguments{
-\item{obs}{}
+\item{dts}{vector of dates (formatted as strings YYYYMMDD)}
+
+\item{obs}{vector of observations}
 }
 \value{
-
+regular time series
 }
 \description{
-Title
+Convert irregular time series with missing values to a regular one
 }

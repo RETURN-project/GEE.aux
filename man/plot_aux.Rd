@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_ts.R
 \name{plot_aux}
 \alias{plot_aux}
-\title{Title}
+\title{Plot recovery metrics}
 \usage{
 plot_aux(
   dts,
@@ -19,11 +19,31 @@ plot_aux(
 )
 }
 \arguments{
-\item{met_yryr}{}
+\item{dts}{vector of dates}
+
+\item{obsi}{time series - vector of observations}
+
+\item{main}{title of the plot (string)}
+
+\item{lossdt_start}{start uncertainty window of disturbance date}
+
+\item{lossdt_end}{end uncertainty window of disturbance date}
+
+\item{lossdt_start1}{start date for time window of accepted breaks}
+
+\item{lossdt_end1}{end date for time window of accepted breaks}
+
+\item{trend}{fitted trend component - vector of observations}
+
+\item{met_rri}{derived RRI metric}
+
+\item{met_r80p}{derived R80p metric}
+
+\item{met_yryr}{derived YrYr metric}
 }
 \value{
-
+plot
 }
 \description{
-Title
+Plot recovery metrics
 }

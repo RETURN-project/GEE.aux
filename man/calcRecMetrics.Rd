@@ -21,7 +21,31 @@ calcRecMetrics(
 )
 }
 \arguments{
-\item{timeThres}{}
+\item{tsi}{vector of observations (time series with a fixed observation frequency)}
+
+\item{tdist}{observation number of disturbance, indicating the timing of the disturbance}
+
+\item{obspyr}{number of observations per year}
+
+\item{nPre}{number of years prior to the disturbance used to calculate the pre-disturbance value}
+
+\item{nDist}{number of years used to quantify the state during the disturbance}
+
+\item{nPost}{number of years used to calculate the post-disturbance value}
+
+\item{nPostStart}{indicates the start of the post-disturbance period (expressed as number of years after the disturbance)}
+
+\item{nDelta}{number of years used to calculate the post-disturbance value for the YrYr metric}
+
+\item{nDeltaStart}{indicates the start of the post-disturbance period for the YrYr metric (expressed as number of years after the disturbance)}
+
+\item{tbp}{breakpoints in time series}
+
+\item{maxBreak}{should the major observed break be used to calculate recovery metrics? Otherwise the break closed to tdist is used.}
+
+\item{chkBrk}{should time series be checked for breaks within the post- or pre-disturbance period?}
+
+\item{timeThres}{the maximum allowed time difference between the observed break and the disturbance \link{years}}
 }
 \value{
 

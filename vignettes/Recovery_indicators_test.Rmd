@@ -196,7 +196,9 @@ dat <- getPlotData(id)
 plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
            dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
 
-id <- which(df_rec$YrYr == median(df_rec$YrYr, na.rm = T))
+YrYr_vals <- df_rec$YrYr[!is.na(df_rec$YrYr)]
+YrYr_med <- YrYr_vals[rank(YrYr_vals) == floor(length(YrYr_vals)/2)]
+id <- which(df_rec$YrYr == YrYr_med)
 dat <- getPlotData(id)
 plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
            dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)

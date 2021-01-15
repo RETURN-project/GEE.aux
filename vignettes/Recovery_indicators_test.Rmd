@@ -14,6 +14,9 @@ library(tidyverse)
 
 library(bfast)
 library(strucchange)
+library(sf)
+library(raster)
+library(ggplot2)
 ```
 
 ## User inputs
@@ -95,7 +98,7 @@ nts <- dim(df_out)[1]
 # fit piecewise regression for each pixel
 seg <- lapply(1:nts, function(i){getSegments(as.numeric(df_out[i,-c(1:5)]),12,0.15,T)})
 # save result
-save(seg, file = file.path(ifolder, paste0('seg_', tools::file_path_sans_ext(ifile), '.Rdata')))
+# save(seg, file = file.path(ifolder, paste0('seg_', tools::file_path_sans_ext(ifile), '.Rdata')))
 
 ```
 
@@ -143,11 +146,12 @@ getPlotData <- function(id){
   return(out)
 }
 
-# for (id in 1:10){
-#   dat <- getPlotData(id)
-#   plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
-#            dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
-# }
+# plot time series with recovery metrics that are not equal to NA
+for (id in which(!is.na(df_rec$RRI))){
+  dat <- getPlotData(id)
+  plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+}
 
 # fraction of time series with recovery metric that does not equal NA
 fracRRI <- sum(!is.na(df_rec$RRI))/length(df_rec$RRI)
@@ -207,5 +211,36 @@ id <- which(df_rec$YrYr == min(df_rec$YrYr, na.rm = T))
 dat <- getPlotData(id)
 plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
            dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+# Spatial plot
+
+temp <- str_split(df_rec$coords, ", ")
+lon <- as.numeric(unlist(lapply(temp, function(x) x[1]))) 
+lat <- as.numeric(unlist(lapply(temp, function(x) x[2]))) 
+rm(temp)
+df_rec$lat <- lat
+df_rec$lon <- lon
+
+coordinates(df_rec) <- ~lon+lat
+proj4string(df_rec) <- CRS("+init=epsg:4326")
+
+df_rec <- st_as_sf(df_rec,coords = c('lon','lat'))
+
+# Vector of Brazilian borders
+br <- st_as_sf(getData('GADM', country = 'BRA', level = 1))# retrieve data
+br <- st_transform(br, crs =  crs(df_rec))# convert CRS 
+
+#generate plot
+ggplot() +
+    geom_sf(data = br, color = 'black') +
+    geom_sf(data = df_rec[!is.na(df_rec$RRI),],  aes(col = RRI, fill = RRI))
+
+ggplot() +
+    geom_sf(data = br, color = 'black') +
+    geom_sf(data = df_rec[!is.na(df_rec$R80P),],  aes(col = R80P, fill = R80P))
+
+ggplot() +
+    geom_sf(data = br, color = 'black') +
+    geom_sf(data = df_rec[!is.na(df_rec$YrYr),],  aes(col = YrYr, fill = YrYr))
 
 ```

@@ -1,0 +1,36 @@
+var msk = ee.Image("users/wandadekeersmaecker/RETURN/forest_fire_nat");
+// This script samples locations using a stratified sampling strategy (given by the imported msk image)
+
+//----------------------
+// inputs
+var reg = msk.geometry();//sampling area
+var generalScale=30;//sampling scale
+var seed=23532542;// sampling seed
+var n=30;//number of samples per strata
+
+//----------------------
+// sample locations
+// Here, pixels are sampled per ecoregion (given by the band 'first' in the msk image)
+var samples=msk.stratifiedSample({
+  numPoints:n,
+  classBand:'first',
+  region:reg,
+  seed:seed,
+  scale:generalScale,
+  geometries:true,
+  dropNulls:true
+  });
+  
+//----------------------
+// visualise layers 
+//print ("Samples",samples)
+Map.addLayer(msk.select('first'),{},'Pixels of interest');
+Map.addLayer(reg,{},'area of interest');
+Map.addLayer(samples,{},'Samples');
+
+//----------------------
+// export sampled locations to asset
+// print(samples);
+Export.table.toAsset(samples, 'samples_forest_fire_nat_n'+n, 'RETURN/samples_forest_loss_fire_n'+n);
+
+

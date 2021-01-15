@@ -1,0 +1,136 @@
+var han = ee.Image("UMD/hansen/global_forest_change_2019_v1_7"),
+    geometry = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-84.01443733959239, 13.76218678701149],
+          [-84.01443733959239, -30.288606414460403],
+          [-32.69729866771739, -30.288606414460403],
+          [-32.69729866771739, 13.76218678701149]]], null, false),
+    ecoreg = ee.FeatureCollection("RESOLVE/ECOREGIONS/2017"),
+    geometry2 = /* color: #d63000 */ee.Geometry.Point([-51.748552598567244, -9.219632136783082]),
+    ccifire = ee.ImageCollection("users/wandadekeersmaecker/CCI_fire_v51"),
+    ccifireconf = ee.ImageCollection("users/wandadekeersmaecker/CCI_fire_v51_conf"),
+    CCI_fire_lc = ee.ImageCollection("users/wandadekeersmaecker/CCI_fire_v51_lc");
+// This script generates an image with ecoregion (RESOLVE Ecoregions).
+// Here pixels are masked except for pixels that fullfill all of these requirements:
+// - pixels are covered by a natural land cover type  since 1985 (given by mapbiomas land cover dataset)
+// - pixels are covered by forest until 2000 (given by Mapbiomas land cover dataset)
+// - pixels were burned after 2000 (as defined by the CCI Fire dataset)
+// - pixels are located within the area of interest (given by geometry)
+
+// It exports the image to an Asset.
+
+var startyr = 2000;
+var endyr = 2020;
+var startyear = startyr + '-01-01';// '2000-01-01';
+var endyear = endyr + '-12-31';//'2020-01-01';
+var confLevFire = 95;
+var confLevNoFire = 5;
+
+// -----------------------------------------------------------------
+// Prepare land cover data
+var LC = ee.Image('projects/mapbiomas-workspace/public/collection5/mapbiomas_collection50_integration_v1');
+
+// mask - land cover since 1985 should only cover natural LC types
+var defaultValue = 0;
+var bands = LC.bandNames()// band names of LC dataset
+var lcmask = ee.ImageCollection(bands.map(function(band){
+  return LC.select([band]).remap([3,4,5,11,12,13,23,29,32],[1,1,1,1,1,1,1,1,1], defaultValue, band)//.rename([band])
+})).sum()//.toBands()// convert image to image collection with value 1 if pixel had natural land cover type and 0 if it was not natural
+
+// mask - area should be covered by forest until 2000
+var LC2000 = LC.select(ee.List.sequence(0,15))// select the first 16 years (until 2000)
+var bands2000 = LC2000.bandNames()// names of the bands 
+var lcmask2000 = ee.ImageCollection(bands2000.map(function(band){
+  return LC2000.select([band]).remap([3],[1], defaultValue, band)//.rename([band])
+})).sum()//.toBands()// convert image to image collection with 1 if pixel was forest and 0 if it was not forested
+
+// -----------------------------------------------------------------
+// Ecoregions - convert the vector to a raster
+var projection = han.select(0).projection();
+var ecoreg = ecoreg.select('ECO_ID');// select property of interest
+print(ecoreg.first());
+var ecoregIm = ecoreg.reduceToImage({properties: ['ECO_ID'],
+reducer: ee.Reducer.first()}).int();// convert vector to raster
+var ecoregIm = ecoregIm.clip(geometry);// Only a small part of the vector is converted to raster
+
+// print(ecoregIm)
+
+// -----------------------------------------------------------------
+// Get map of fire locations for the selected time span
+// Combine the fire layers with the confidence layers
+// Define an inner join.
+var innerJoin = ee.Join.inner();
+
+// Specify an equals filter for image timestamps.
+var filterDateEq = ee.Filter.equals({
+    leftField:'system:time_start', 
+    rightField: 'system:time_start'
+});
+
+// Apply the join.
+var innerJoinedFire = innerJoin.apply(ccifire, ccifireconf, filterDateEq);
+var joinedFire = innerJoinedFire.map(function(feature) {
+  return ee.Image.cat(feature.get('primary'), feature.get('secondary'));
+});
+
+// Extract fire and no fire areas
+var applyMaskFire = function (image) {
+  image = ee.Image(image);
+  return image.updateMask(image.select('b1_1').gt(confLevFire));
+};
+
+//var applyMasknoFire = function (image) {
+//  image = ee.Image(image);
+//  return image.updateMask(image.select('b1').gt(-1));
+//};
+
+var FireColl = ee.ImageCollection(joinedFire).map(applyMaskFire).filterBounds(geometry);
+//print(FireColl)
+//var noFireColl  = ee.ImageCollection(joinedFire).map(applyMasknoFire).filterBounds(geometry);
+
+var fireAreas = FireColl.filterDate(startyear, endyear).select(['b1']).max();
+Map.addLayer(fireAreas);
+//var noFireAreas = noFireColl.select(['b1_1']).max();
+//var noFireAreas = noFireAreas.updateMask(noFireAreas.lt(confLevNoFire));
+
+// -----------------------------------------------------------------
+// Combine to single masked image with ecoregion and date of disturbance
+
+// area with forest loss after 2000, covered by forest until 2000, and only containing natural LC types since 1985
+var smpleArea = han.select('lossyear').addBands(ecoregIm);// generate raster with two bands: forest loss year and ecoregions 
+smpleArea = smpleArea.updateMask(han.select('lossyear').gt(0)).updateMask(han.select('datamask').eq(1));// mask image
+smpleArea = smpleArea.updateMask(han.select('loss').eq(1))// mask image
+var smpleArea = smpleArea.updateMask(lcmask2000.eq(16)).updateMask(lcmask.eq(35));// mask image
+var smpleArea = smpleArea.updateMask(fireAreas.gt(0))
+
+Map.addLayer(ecoreg,{},'ecoregion')
+Map.addLayer(smpleArea.select('first'),{min:450, max:550,palette:['129912', 'af2a2a','1F4423']},'ecoregion masked')
+//Map.addLayer(smpleArea.select('lossyear'),{min:0, max:20},'lossyear masked')
+
+// var data = smpleArea.select('first')
+// .reduceRegion(ee.Reducer.first(),geometry2,10)
+// //.get("lossyear");
+// var dataN = ee.Number(data);
+// print(data);
+var data = fireAreas
+ .reduceRegion(ee.Reducer.first(),geometry2,10)
+// //.get("lossyear");
+//var dataN = ee.Number(data);
+print(data);
+// -----------------------------------------------------------------
+// Export image to asset
+Export.image.toAsset({
+  image: smpleArea,
+  region: geometry,
+  scale: 30,
+  description: 'forest_fire_nat',
+  assetId: 'RETURN/forest_fire_nat',
+  maxPixels: 216967828660
+})

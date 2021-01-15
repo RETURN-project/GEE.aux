@@ -215,7 +215,7 @@ calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, n
     totbp <- tbp
     if(maxBreak){
       # Find the major break
-      dbr <- trf[tbp+1]-trf[tbp]
+      dbr <- tsi[tbp+1]-tsi[tbp]
       tbp <- tbp[which(abs(dbr) == max(abs(dbr)))]
       tbp <- tbp[1]
     }else{

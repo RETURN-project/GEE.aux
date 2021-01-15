@@ -7,7 +7,7 @@
 This repository contains JavaScript, python and R code and follows this workflow: 
 - Javascript: Generate an image with pixels of interest (/inst/Javascript/SampleArea)
 - Javascript: Sample point locations using a stratified random sampling from the pixels of interest (/inst/JavaScript/SamplePoints)
-- Python: Extract time series and auxiliary information from the sampled locations to a csv file (/inst/python/dllLandsat.py)
+- Python: Extract time series and auxiliary information from the sampled locations to a csv file (/inst/python/dllLandsat.ipynb and /inst/python/dllLandsatFire.ipynb)
 - R: Prepare data and derive recovery metrics (/vignettes/Recovery_indicators_test.Rmd):
     - Generate a dataframe with data extracted from the GEE
     - Convert the irregular time series to regular ones

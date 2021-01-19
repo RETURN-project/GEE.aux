@@ -1,0 +1,286 @@
+---
+title: "Calculate recovery metrics"
+author: "Wanda De Keersmaecker"
+date: "1/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(zoo)
+library(GEE.aux)
+library(tidyverse)
+
+library(bfast)
+library(strucchange)
+library(sf)
+library(raster)
+library(ggplot2)
+```
+
+## User inputs
+```{r inputs}
+# path to folder with data
+ifolder <- '../inst/testdata/'
+# path to folder where outputs should be stored
+ofolder <- '../inst/testdata/'
+# name of data files
+ifile <- 'samples_forest_fire_nat_n30.csv'
+
+confLevFire <- 95# mimimum confidence level to recognize a fire event
+
+obspyr <- 12 # number of observations per year
+nPre <- 2 #number of years used to quantify the pre-disturbance state
+nDist <- 1 # number of years used to quantify the disturbance state
+nPost <- 2 # number of years used to quantify the post-disturbance state
+nPostStart <- 4# number of years between the disturbance and start of the post-disturbance period
+nDelta <- 2# number of years used to quantify the post-disturbance state for the YrYr metric
+nDeltaStart <- 4# number of years between the disturbance and start of the post-disturbance period for the YrYr metric
+selBreak <- 'first'# which break should be used to calculate the recovery metrics?
+chkBrk <- T# check if no additional breaks occur in the period that recovery is assessed
+timeThres <- 1.5# the maximum allowed time difference between the reported disturbance and detected break
+```
+
+# Read data into tidy data frame
+```{r tidy_data}
+  # get full path of the input file
+  pth <- file.path(ifolder,ifile)
+  # read the input file
+  x <- readLines(pth)
+  # column names of the data 
+  col_names <- c("id","ecoReg","coords","img_names","series","img_doy_","doy_fire_","img_conf_","conf_fire_")
+  # generate a dataframe from the input data 
+  dat_tidy <- tidy_data(x,col_names)
+  # write the dataframe to a csv file
+  write_csv(dat_tidy, file.path(ofolder, paste0('tidy_',ifile)))
+  save(dat_tidy, file = file.path(ofolder, paste0('tidy_', tools::file_path_sans_ext(ifile), '.Rdata')))
+  
+ # column names of the dataframe
+cols <- names(dat_tidy)# all column names
+dtcols <- cols[startsWith(cols,"p__")]# column names of the columns containing the observation dates
+obscols <- cols[startsWith(cols,"series__")]# column names of the columns containing the observations
+auxcols <- cols[!startsWith(cols,"p__") & !startsWith(cols,"series__") & !startsWith(cols,"img_doy_") & !startsWith(cols,"doy_fire_") & !startsWith(cols,"img_conf_") & !startsWith(cols,"conf_fire_")]# column names of the columns containing the auxiliary information
+firecols <- cols[!startsWith(cols,"p__") & !startsWith(cols,"series__")]# column names of the columns containing fire-related info 
+
+
+```
+
+# Extract fire dates
+```{r regular_ts}
+# get the columns with fire related information
+dat_fire <- dat_tidy[,firecols]
+# extract time series of fire doy and fire confidence
+tidy_fire <- tidy_fire_date(dat_fire)
+fire_doy <- tidy_fire$fire_doy
+fire_conf <- tidy_fire$fire_conf
+firedts <- as.Date(names(fire_conf)[startsWith(names(fire_conf),"1") | startsWith(names(fire_conf),"2")])
+  
+# get fire events per time series
+fireDts <- lapply(1:dim(fire_doy)[1], function(i){getFireDate(as.numeric(fire_conf[i,as.character(firedts)]), as.numeric(fire_doy[i,as.character(firedts)]),firedts, confLevFire)})
+# save results
+
+```
+
+# convert the irregular time series to regular ones
+
+```{r regular_ts}
+# set desired start and end dates of the regular time series
+dat_tidy <- dat_tidy%>%mutate_at(dtcols,function(x){as.numeric(x)})# make dates numeric
+mnyr <- format(as.Date(as.character(min(dat_tidy[,dtcols], na.rm = T)),'%Y%m%d'),'%Y')# start year of the irregular time series
+mxyr <- format(as.Date(as.character(max(dat_tidy[,dtcols], na.rm = T)),'%Y%m%d'),'%Y')# end year of the irregular time series
+startdt <- as.Date(paste0(mnyr,'-01-01'))# desired start date of regular time series
+enddt <- as.Date(paste0(mxyr,'-12-31'))# desired end date of regular time series
+dts <- seq(startdt,enddt,by='month')# dates of regular series
+
+# extract dates and associated observations of the irregular time series
+# add a NA observation at the desired start and end date of the regular series
+# the latter is required to ensure that the time span of the regular series is fixed between these two dates
+dtsi <- dat_tidy[,dtcols]# dates of the irregular time series
+dtsi <- cbind(rep(as.numeric(paste0(mnyr,'0101')),dim(dtsi)[1]),rep(as.numeric(paste0(mxyr,'1231'),dim(dtsi)[1])),dtsi)# dates, extended with desired start and end date
+dat_tidy <- dat_tidy%>%mutate_at(obscols,function(x){as.numeric(x)})# make dates numeric
+obsi <- dat_tidy[,obscols]# observations of the irregular time series
+obsi <- cbind(rep(NA,dim(obsi)[1]),rep(NA,dim(obsi)[1]),obsi)# observations, extended with two NA values
+
+# Generate a regular time series for each pixel
+out <- sapply(1:dim(obsi)[1], function(i) getRegularTS(dtsi[i,], obsi[i,]))# generate a regular time series
+df_out <- as.data.frame(t(out))# convert to a dataframe
+names(df_out) <- dts# add dates of observations to column names
+df_out <- cbind(dat_tidy[,auxcols],df_out)# add auxiliary data to dataframe
+
+save(df_out, file = file.path(ifolder, paste0('reg_', tools::file_path_sans_ext(ifile), '.Rdata')))# save the result
+
+```
+
+# Piecewise regression
+
+```{r segment}
+# number of pixels to be processed
+nts <- dim(df_out)[1]
+# fit piecewise regression for each pixel
+seg <- lapply(1:nts, function(i){getSegments(as.numeric(df_out[i,-c(1:4)]),12,0.15,T)})
+# save result
+save(seg, file = file.path(ifolder, paste0('seg_', tools::file_path_sans_ext(ifile), '.Rdata')))
+
+```
+
+# Calculate recovery metrics
+
+```{r recovery}
+library(lubridate)
+# calculate recovery metrics
+df_lst <-  lapply(1:nts,function(i){
+  # get observation number of reported disturbance
+  fdts <- fireDts[[i]][1]# only take the first fire
+  fdts[!is.na(fdts)] <- rollback(fdts[!is.na(fdts)], roll_to_first = T)
+  tdist <- which(dts %in% fdts)# convert fire date to observation number
+  # trend component of piecewise regression
+  tsi <- seg[[i]]$trend
+  # breakpoints of piecewise regression
+  tbp <- seg[[i]]$breakpoints
+  tbp <- tbp[tbp!=0 & tbp!=length(tsi)]
+  # calculate recovery metric for each fire event
+  rec <- sapply(1:length(fdts), function(ii){
+    if(!is.na(tdist[ii])){
+      calcRecMetrics(tsi, tdist[ii], obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart, tbp, selBreak, chkBrk, timeThres)
+    }else{
+      list('RRI' = NA, 'R80P' = NA, 'YrYr' = NA)
+    }})
+})
+df_fr <- as.data.frame(t(data.frame(do.call(cbind.data.frame,df_lst))))
+df_fr$RRI <- unlist(df_fr$RRI)
+df_fr$R80P <- unlist(df_fr$R80P)
+df_fr$YrYr <- unlist(df_fr$YrYr)
+
+
+# add auxiliary data to the dataframe
+df_rec <- cbind(dat_tidy[,auxcols], df_fr)
+# save result
+save(df_rec, file = file.path(ifolder,  paste0('rec_', tools::file_path_sans_ext(ifile), '.Rdata')))
+
+```
+
+# Plot time series
+
+```{r plot}
+getPlotData <- function(id){
+  fdts <- fireDts[[id]][1]# only take the first fire
+  fdts[!is.na(fdts)] <- rollback(fdts[!is.na(fdts)], roll_to_first = T)
+  # tdist <- which(dts %in% fdts)# convert fire date to observation number
+  # distyr <- as.numeric(df_out$lossyr[id])
+  lossdt_start1 <- seq(fdts, length = 2, by = "-18 months")[2]
+  lossdt_end1 <- seq(fdts, length = 2, by = "+18 months")[2]
+
+  obsi <- df_out[id,-c(1:4)]
+  trend <- seg[[id]]$trend
+  met_rri <- df_rec$RRI[id]
+  met_r80p <- df_rec$R80P[id]
+  met_yryr <- df_rec$YrYr[id]
+  out <- list(fdts, fdts,fdts,lossdt_start1,lossdt_end1,obsi,trend,met_rri,met_r80p,met_yryr)
+  names(out)<- c('distyr', 'lossdt_start','lossdt_end','lossdt_start1','lossdt_end1','obsi','trend','met_rri','met_r80p','met_yryr')
+  return(out)
+}
+
+# plot time series with recovery metrics that are not equal to NA
+for (id in which(!is.na(df_rec$RRI))){
+  dat <- getPlotData(id)
+  plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+}
+
+# fraction of time series with recovery metric that does not equal NA
+fracRRI <- sum(!is.na(df_rec$RRI))/length(df_rec$RRI)
+fracR80p <- sum(!is.na(df_rec$R80P))/length(df_rec$R80P)
+fracYrYr <- sum(!is.na(df_rec$YrYr))/length(df_rec$YrYr)
+
+# plot time series with max, median and min RRI
+id <- which(df_rec$RRI == max(df_rec$RRI, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+RRI_vals <- df_rec$RRI[!is.na(df_rec$RRI)]
+RRI_med <- RRI_vals[rank(RRI_vals) == floor(length(RRI_vals)/2)]
+id <- which(df_rec$RRI == RRI_med)
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+id <- which(df_rec$RRI == min(df_rec$RRI, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+# plot time series with max, median and min R80p
+id <- which(df_rec$R80P == max(df_rec$R80P, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+R80P_vals <- df_rec$R80P[!is.na(df_rec$R80P)]
+R80P_med <- R80P_vals[rank(R80P_vals) == floor(length(R80P_vals)/2)]
+id <- which(df_rec$R80P == R80P_med)
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+id <- which(df_rec$R80P == min(df_rec$R80P, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+# plot time series with max, median and min YrYr
+id <- which(df_rec$YrYr == max(df_rec$YrYr, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+YrYr_vals <- df_rec$YrYr[!is.na(df_rec$YrYr)]
+YrYr_med <- YrYr_vals[rank(YrYr_vals) == floor(length(YrYr_vals)/2)]
+id <- which(df_rec$YrYr == YrYr_med)
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+id <- which(df_rec$YrYr == min(df_rec$YrYr, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+
+```
+
+# Spatial plots
+```{r, spatial_plot}
+# Spatial plot
+
+temp <- str_split(df_rec$coords, ", ")
+lon <- as.numeric(unlist(lapply(temp, function(x) x[1]))) 
+lat <- as.numeric(unlist(lapply(temp, function(x) x[2]))) 
+rm(temp)
+df_rec$lat <- lat
+df_rec$lon <- lon
+
+coordinates(df_rec) <- ~lon+lat
+proj4string(df_rec) <- CRS("+init=epsg:4326")
+
+df_rec <- st_as_sf(df_rec,coords = c('lon','lat'))
+
+# Vector of Brazilian borders
+br <- st_as_sf(getData('GADM', country = 'BRA', level = 1))# retrieve data
+br <- st_transform(br, crs =  crs(df_rec))# convert CRS 
+
+#generate plot
+ggplot() +
+    geom_sf(data = br, color = 'black') +
+    geom_sf(data = df_rec[!is.na(df_rec$RRI),],  aes(col = RRI, fill = RRI))
+
+ggplot() +
+    geom_sf(data = br, color = 'black') +
+    geom_sf(data = df_rec[!is.na(df_rec$R80P),],  aes(col = R80P, fill = R80P))
+
+ggplot() +
+    geom_sf(data = br, color = 'black') +
+    geom_sf(data = df_rec[!is.na(df_rec$YrYr),],  aes(col = YrYr, fill = YrYr))
+
+```

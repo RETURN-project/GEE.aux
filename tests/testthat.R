@@ -1,5 +1,5 @@
 Sys.setenv("R_TESTS" = "")
 library(testthat)
-library(GEE_aux)
+library(GEE.aux)
 
 test_check("GEE_aux")

@@ -57,3 +57,5 @@ extract_date <- function(x){
     } else{x[1]}} )
   as.numeric(unlist(L))
 }
+
+

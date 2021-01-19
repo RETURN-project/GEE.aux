@@ -15,7 +15,7 @@ calcRecMetrics(
   nDelta,
   nDeltaStart,
   tbp,
-  maxBreak,
+  selBreak,
   chkBrk = F,
   timeThres
 )
@@ -41,7 +41,7 @@ calcRecMetrics(
 
 \item{tbp}{breakpoints in time series}
 
-\item{maxBreak}{should the major observed break be used to calculate recovery metrics? Otherwise the break closed to tdist is used.}
+\item{selBreak}{How should the breakpoint be selected to calculate recovery metrics: max = maximum break, close =  the break closed to tdist, first = first negative break (if no negative breaks are found, it takes the first break).}
 
 \item{chkBrk}{should time series be checked for breaks within the post- or pre-disturbance period?}
 

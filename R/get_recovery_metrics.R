@@ -202,7 +202,7 @@ calcFrazier <- function(tsio, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDe
 #' @param nDelta number of years used to calculate the post-disturbance value for the YrYr metric
 #' @param nDeltaStart indicates the start of the post-disturbance period for the YrYr metric (expressed as number of years after the disturbance)
 #' @param tbp breakpoints in time series
-#' @param maxBreak should the major observed break be used to calculate recovery metrics? Otherwise the break closed to tdist is used.
+#' @param selBreak How should the breakpoint be selected to calculate recovery metrics: max = maximum break, close =  the break closed to tdist, first = first negative break (if no negative breaks are found, it takes the first break).
 #' @param chkBrk should time series be checked for breaks within the post- or pre-disturbance period?
 #' @param timeThres the maximum allowed time difference between the observed break and the disturbance [years]
 #'
@@ -210,19 +210,24 @@ calcFrazier <- function(tsio, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDe
 #' @export
 #'
 calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
-                       tbp, maxBreak, chkBrk = F, timeThres){
+                       tbp, selBreak, chkBrk = F, timeThres){
   if(!is.na(tbp[1])){
     totbp <- tbp
-    if(maxBreak){
+    if(selBreak == 'max'){
       # Find the major break
       dbr <- tsi[tbp+1]-tsi[tbp]
       tbp <- tbp[which(abs(dbr) == max(abs(dbr)))]
       tbp <- tbp[1]
-    }else{
+    }else if(selBreak == 'close'){
       # Use the break closest to the disturbance date
       dbr <- tbp-tdist
       tbp <- tbp[which(abs(dbr) == min(abs(dbr)))]
       tbp <- tbp[1]
+      # Use the first negative break. If no negative breaks are present, use first break
+    }else if(selBreak == 'first'){
+      dbr <- tsi[tbp+1]-tsi[tbp]
+      tbp <- tbp[which(dbr<0)]
+      if(length(tbp)>0){tbp <- tbp[1]}else{tbp <- totbp[1]}
     }
 
     # check the time period between the break and the disturbance

@@ -35,7 +35,7 @@ nPost <- 2
 nPostStart <- 4
 nDelta <- 2
 nDeltaStart <- 4
-maxBreak <- T
+selBreak <- 'max'
 chkBrk <- T
 timeThres <- 1.5
 ```
@@ -118,7 +118,7 @@ df_fr <- data.frame(do.call(rbind.data.frame, lapply(1:nts,function(i){
   tbp <- tbp[tbp!=0 & tbp!=length(tsi)]
   # calculate recovery metrics
   calcRecMetrics(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
-                                                  tbp, maxBreak, chkBrk, timeThres)})))
+                                                  tbp, selBreak, chkBrk, timeThres)})))
 # add auxiliary data to the dataframe
 df_rec <- cbind(dat_tidy[,auxcols], df_fr)
 # save result

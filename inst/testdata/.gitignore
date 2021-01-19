@@ -2,3 +2,13 @@ tidy_test2.csv
 reg_test2.Rdata
 seg_test2.Rdata
 rec_test2.Rdata
+tidy_samples_forest_fire_nat_n30.csv
+fireDts_samples_forest_fire_nat_n30.Rdata
+fire_conf_samples_forest_fire_nat_n30.Rdata
+fire_doy_samples_forest_fire_nat_n30.Rdata
+rec_samples_forest_fire_nat_n30.Rdata
+reg_samples_forest_fire_nat_n30.Rdata
+tidy_fire_samples_forest_fire_nat_n30.Rdata
+seg_samples_forest_fire_nat_n30.Rdata
+tidy_samples_forest_fire_nat_n30.Rdata
+tidy_fire_samples_forest_fire_nat_n30.csv

@@ -41,6 +41,7 @@ getFireDate <- function(ts_conf, ts_doy, dts, conf_level){
 #'
 #' @return date frame of fire doy and fire confidence level
 #' @export
+#' @import dplyr
 #'
 tidy_fire_date <- function(dat_fire){
   # count the number of observations per time series

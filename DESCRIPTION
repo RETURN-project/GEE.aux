@@ -18,4 +18,6 @@ Imports: bfast,
          tidyverse,
          zoo,
          strucchange,
-         stringr
+         stringr,
+         stats,
+         dplyr

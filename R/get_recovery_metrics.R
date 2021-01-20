@@ -10,6 +10,7 @@
 #'
 #' @return The YrYr parameter for the given time series
 #' @export
+#' @import stats
 #'
 #' @references Frazier, R. J., Coops, N. C., Wulder, M. A., Hermosilla, T., & White, J. C. (2018).
 #' Analyzing spatial and temporal variability in short-term rates of post-fire vegetation return

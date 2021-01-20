@@ -9,6 +9,7 @@
 #' @export
 #' @import bfast
 #' @import zoo
+#' @import stats
 #'
 toRegularTS <- function(tsi, dts, fun, resol){
   tsi <- as.numeric(tsi)

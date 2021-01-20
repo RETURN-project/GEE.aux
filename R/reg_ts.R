@@ -37,6 +37,21 @@ toRegularTS <- function(tsi, dts, fun, resol){
 }
 
 
+#' Helper function for the toRegularTS function
+#'
+#' @param x vector of observations
+#'
+#' @return the maximum value of the vector
+#' @export
+mmax <- function(x) {
+  if(length(which.max(x)) == 0) {
+    out <- NA
+  } else {
+    out <- as.numeric(x[which.max(x)])
+  }
+  return(out)
+}
+
 #' Get regular time series
 #'
 #' Convert irregular time series with missing values to a regular one

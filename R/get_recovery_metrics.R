@@ -62,7 +62,7 @@ yryr <- function(ts, ys, tpert=0, deltat=5) {
 #' @examples
 #' # Generate an example time series
 #' ts <- seq(-2, 10, by = 0.1) # as a vector of times
-#' ys <- exponential(ts, pert = -2, offset = 1, thalf = 0.25) # plus a vector of values
+#' ys <- 1*(ts<0)+ (-1 + (2/0.5)*(ts))*(ts >= 0)*(ts <= 0+0.5)+(ts > 0.5) # plus a vector of values
 #' r80p(ts, ys)
 r80p <- function(ts, ys, r=0.8, ts_pre=c(-1,-2), ts_post=c(4, 5)) {
   # Auxiliary interpolation function. Given a time, returns the corresponding value.
@@ -103,7 +103,7 @@ r80p <- function(ts, ys, r=0.8, ts_pre=c(-1,-2), ts_post=c(4, 5)) {
 #' @examples
 #' # Generate an example time series
 #' ts <- seq(-2, 10, by = 0.1) # as a vector of times
-#' ys <- exponential(ts, pert = -2, offset = 1, thalf = 0.25) # plus a vector of values
+#' ys <- 1*(ts<0)+ (-1 + (2/0.5)*(ts))*(ts >= 0)*(ts <= 0+0.5)+(ts > 0.5)#texponential(ts, pert = -2, offset = 1, thalf = 0.25) # plus a vector of values
 #' rri(ts, ys)
 rri <- function(ts, ys, tpert=0, ts_pre=-1, ts_post=c(4, 5)) {
   # Auxiliary interpolation function. Given a time, returns the corresponding value.

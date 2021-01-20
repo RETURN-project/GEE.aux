@@ -26,7 +26,7 @@ Relative Recovery Indicator
 \examples{
 # Generate an example time series
 ts <- seq(-2, 10, by = 0.1) # as a vector of times
-ys <- exponential(ts, pert = -2, offset = 1, thalf = 0.25) # plus a vector of values
+ys <- 1*(ts<0)+ (-1 + (2/0.5)*(ts))*(ts >= 0)*(ts <= 0+0.5)+(ts > 0.5)#texponential(ts, pert = -2, offset = 1, thalf = 0.25) # plus a vector of values
 rri(ts, ys)
 }
 \references{

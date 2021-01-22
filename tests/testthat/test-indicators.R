@@ -190,8 +190,8 @@ test_that("calcRecMetrics - timing first disturbance", {
                              tbp, selBreak, chkBrk = F, timeThres)
 
   pre <- 1
-  dist <- mean(tsio[25:36])
-  post <- max(tsio[73:96])
+  dist <- mean(tsi[25:36])
+  post <- max(tsi[73:96])
   dnbr <- pre-dist
   ari <- post-dist
 

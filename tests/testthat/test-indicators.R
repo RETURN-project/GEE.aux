@@ -301,8 +301,8 @@ test_that("calcRecMetrics - no negative break", {
   met <- calcRecMetrics(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
                         tbp, selBreak, chkBrk = F, timeThres)
   pre <- -1
-  dist <- mean(tsio[121:132])
-  post <- max(tsio[169:192])
+  dist <- mean(tsi[121:132])
+  post <- max(tsi[169:192])
   dnbr <- pre-dist
   ari <- post-dist
 

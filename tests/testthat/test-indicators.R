@@ -197,7 +197,7 @@ test_that("calcRecMetrics - timing first disturbance", {
 
   rrim <- ari/dnbr
   r80pm <- post/(0.8*pre)
-  yryrm <- (mean(tsio[73:96]) - dist)/(mean(c(73:96)) - mean(c(25:36)))
+  yryrm <- (mean(tsi[73:96]) - dist)/(mean(c(73:96)) - mean(c(25:36)))
 
   expect_equal(met$RRI, rrim, tolerance = 1e-4)
   expect_equal(met$R80P, r80pm, tolerance = 1e-4)
@@ -232,7 +232,7 @@ test_that("calcRecMetrics - timing close disturbance", {
 
   rrim <- ari/dnbr
   r80pm <- post/(0.8*pre)
-  yryrm <- (mean(tsio[169:192]) - dist)/(mean(c(169:192)) - mean(c(121:132)))
+  yryrm <- (mean(tsi[169:192]) - dist)/(mean(c(169:192)) - mean(c(121:132)))
 
   expect_equal(met$RRI, rrim, tolerance = 1e-4)
   expect_equal(met$R80P, r80pm, tolerance = 1e-4)
@@ -267,7 +267,7 @@ test_that("calcRecMetrics - timing max disturbance", {
 
   rrim <- ari/dnbr
   r80pm <- post/(0.8*pre)
-  yryrm <- (mean(tsio[265:288]) - dist)/(mean(c(265:288)) - mean(c(217:228)))
+  yryrm <- (mean(tsi[265:288]) - dist)/(mean(c(265:288)) - mean(c(217:228)))
 
   expect_equal(met$RRI, rrim, tolerance = 1e-4)
   expect_equal(met$R80P, r80pm, tolerance = 1e-4)
@@ -308,7 +308,7 @@ test_that("calcRecMetrics - no negative break", {
 
   rrim <- ari/dnbr
   r80pm <- post/(0.8*pre)
-  yryrm <- (mean(tsio[169:192]) - dist)/(mean(c(169:192)) - mean(c(121:132)))
+  yryrm <- (mean(tsi[169:192]) - dist)/(mean(c(169:192)) - mean(c(121:132)))
 
   expect_equal(met$RRI, rrim, tolerance = 1e-4)
   expect_equal(met$R80P, r80pm, tolerance = 1e-4)

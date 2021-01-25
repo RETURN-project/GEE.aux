@@ -20,4 +20,6 @@ Imports: bfast,
          strucchange,
          stringr,
          stats,
-         dplyr
+         dplyr,
+         lubridate,
+         tidyr

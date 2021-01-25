@@ -4,12 +4,16 @@
 \alias{getRegularTS}
 \title{Get regular time series}
 \usage{
-getRegularTS(dts, obs)
+getRegularTS(dts, obs, fun = "mean", resol = "monthly")
 }
 \arguments{
 \item{dts}{vector of dates (formatted as strings YYYYMMDD)}
 
 \item{obs}{vector of observations}
+
+\item{fun}{function used to aggregate observations}
+
+\item{resol}{desired resolution of the regular time series}
 }
 \value{
 regular time series

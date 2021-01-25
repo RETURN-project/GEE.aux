@@ -10,27 +10,45 @@
 #' @import bfast
 #' @import zoo
 #' @import stats
+#' @import lubridate
 #'
 toRegularTS <- function(tsi, dts, fun, resol){
   tsi <- as.numeric(tsi)
   # monthly output
+  dt <- 12 * (zoo::as.yearmon(max(dts)) - zoo::as.yearmon(min(dts)))
   if(resol == 'monthly'){
+    # check if time span of observations is sufficient
+    if(dt<1){stop('The time span of the time series is less than one month')}
+    # make sure that there are at least two observations in subsequent months
+    d <- ymd(min(dts))
+    dts <- c(dts,as.Date(d %m+% months(1)))
+    tsi <- c(tsi,NA)
     z <- zoo(tsi, dts) ## create a zoo (time) series
     if(fun == 'max'){
       mz <- as.ts(aggregate(z, as.yearmon, mmax)) ## max
     } else if(fun == 'mean'){
       mz <- as.ts(aggregate(z, as.yearmon, function(x) mean(x,na.rm = TRUE))) ## mean
+    }else if(fun == 'median'){
+      mz <- as.ts(aggregate(z, as.yearmon, function(x) median(x,na.rm = TRUE))) ## mean
     }
     # daily output
   }else if (resol == 'daily'){
     mz <- bfastts(tsi, dts, type = "irregular")
     # quarterly output
   }else if (resol == 'quart'){
+    # check if time span of observations is sufficient
+    if(dt<3){stop('The time span of the time series is less than one quarter')}
+    # make sure there are at least 2 observations in subsequent quarters
+    d <- ymd(min(dts))
+    dts <- c(dts,as.Date(d %m+% months(3)))
+    tsi <- c(tsi,NA)
+
     z <- zoo(tsi, dts) ## create a zoo (time) series
     if(fun == 'max'){
       mz <- as.ts(aggregate(z, as.yearqtr, mmax)) ## quarterly max
-    }
-    if(fun == 'mean'){
+    }else if(fun == 'mean'){
+      mz <- as.ts(aggregate(z, as.yearqtr, function(x) mean(x,na.rm = TRUE))) ## quarterly mean
+    }else if(fun == 'median'){
       mz <- as.ts(aggregate(z, as.yearqtr, function(x) mean(x,na.rm = TRUE))) ## quarterly mean
     }
   }
@@ -59,14 +77,16 @@ mmax <- function(x) {
 #'
 #' @param dts vector of dates (formatted as strings YYYYMMDD)
 #' @param obs vector of observations
+#' @param fun function used to aggregate observations
+#' @param resol desired resolution of the regular time series
 #'
 #' @return regular time series
 #' @export
 #'
-getRegularTS <- function(dts,obs){
+getRegularTS <- function(dts,obs, fun = 'mean', resol ='monthly'){
   obs <- obs[!is.na(dts)]
   dts <- dts[!is.na(dts)]
   dts <- as.Date(as.character(dts),'%Y%m%d')
-  regts <- toRegularTS(obs, dts, 'mean', 'monthly')
+  regts <- toRegularTS(obs, dts, fun, resol)
   return(regts)
 }

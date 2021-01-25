@@ -67,7 +67,7 @@ test_that("tidy CCI fire data, downloaded from GEE", {
     '2000-12-01' = c('0','0','-1','0','0')
   )
   names(expected_doy) <- c('id', 'ecoReg', 'coords', 'nimg', paste0('2001-',sprintf('%02.f',1:12),'-01'))
-
+  # expected results for fire confidence
   expected_conf <- data.frame(
     id = as.character(c(1:5)),
     ecoReg = c("439", "443", "446", "464", "465"),

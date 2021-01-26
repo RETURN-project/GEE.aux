@@ -22,4 +22,5 @@ Imports: bfast,
          stats,
          dplyr,
          lubridate,
-         tidyr
+         tidyr,
+         readr

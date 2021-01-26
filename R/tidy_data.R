@@ -7,6 +7,7 @@
 #' @export
 #' @import tidyverse
 #' @import stringr
+#' @import readr
 #'
 tidy_data <- function(x, col_names){
   # a <- str_split(tools::file_path_sans_ext(file),"_")%>%unlist
@@ -20,7 +21,7 @@ tidy_data <- function(x, col_names){
   cat(z, file=tmpf, sep="\n")
 
   # load data again, to get rid of the "[" seperator and assign column names
-  dat_orig <- read_csv(tmpf, quote="[",
+  dat_orig <- readr::read_csv(tmpf, quote="[",
                        col_names=col_names)
   # count number of images per time series
   dat_format <- dat_orig%>%

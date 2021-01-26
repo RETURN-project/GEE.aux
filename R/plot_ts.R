@@ -17,7 +17,7 @@
 #'
 plot_aux <- function(dts, obsi,main, lossdt_start,lossdt_end,lossdt_start1,lossdt_end1,
                      trend,met_rri,met_r80p,met_yryr){
-  plot(dts,obsi, xlab = 'Time', ylab = 'NBR [-]', main = paste0(id))
+  plot(dts,obsi, xlab = 'Time', ylab = 'NBR [-]', main = paste0(main))
   lines(dts[!is.na(obsi)],obsi[!is.na(obsi)])
   abline(v = lossdt_start, col = 'red')
   abline(v = lossdt_end, col = 'red')

@@ -1,5 +1,5 @@
 var han = ee.Image("UMD/hansen/global_forest_change_2019_v1_7"),
-    geometry = 
+    geometry =
     /* color: #d63000 */
     /* shown: false */
     /* displayProperties: [
@@ -14,24 +14,22 @@ var han = ee.Image("UMD/hansen/global_forest_change_2019_v1_7"),
           [-32.69729866771739, 13.76218678701149]]], null, false),
     ecoreg = ee.FeatureCollection("RESOLVE/ECOREGIONS/2017"),
     geometry2 = /* color: #d63000 */ee.Geometry.Point([-51.748552598567244, -9.219632136783082]),
-    ccifire = ee.ImageCollection("users/wandadekeersmaecker/CCI_fire_v51"),
-    ccifireconf = ee.ImageCollection("users/wandadekeersmaecker/CCI_fire_v51_conf"),
-    CCI_fire_lc = ee.ImageCollection("users/wandadekeersmaecker/CCI_fire_v51_lc");
+    CCIfire = ee.ImageCollection("ESA/CCI/FireCCI/5_1");
 // This script generates an image with ecoregion (RESOLVE Ecoregions).
 // Here pixels are masked except for pixels that fullfill all of these requirements:
 // - pixels are covered by a natural land cover type  since 1985 (given by mapbiomas land cover dataset)
 // - pixels are covered by forest until 2000 (given by Mapbiomas land cover dataset)
-// - pixels were burned after 2000 (as defined by the CCI Fire dataset)
+// - pixels were burned within period of interest (as defined by the CCI Fire dataset)
 // - pixels are located within the area of interest (given by geometry)
 
 // It exports the image to an Asset.
 
-var startyr = 2000;
-var endyr = 2020;
+var startyr = 2000;// start year of fire period of interest
+var endyr = 2020;// end year of fire period of interest
 var startyear = startyr + '-01-01';// '2000-01-01';
 var endyear = endyr + '-12-31';//'2020-01-01';
-var confLevFire = 95;
-var confLevNoFire = 5;
+var confLevFire = 95;//minimum confidence level to label a pixel as burned
+//var confLevNoFire = 5;
 
 // -----------------------------------------------------------------
 // Prepare land cover data
@@ -46,7 +44,7 @@ var lcmask = ee.ImageCollection(bands.map(function(band){
 
 // mask - area should be covered by forest until 2000
 var LC2000 = LC.select(ee.List.sequence(0,15))// select the first 16 years (until 2000)
-var bands2000 = LC2000.bandNames()// names of the bands 
+var bands2000 = LC2000.bandNames()// names of the bands
 var lcmask2000 = ee.ImageCollection(bands2000.map(function(band){
   return LC2000.select([band]).remap([3],[1], defaultValue, band)//.rename([band])
 })).sum()//.toBands()// convert image to image collection with 1 if pixel was forest and 0 if it was not forested
@@ -64,49 +62,27 @@ var ecoregIm = ecoregIm.clip(geometry);// Only a small part of the vector is con
 
 // -----------------------------------------------------------------
 // Get map of fire locations for the selected time span
-// Combine the fire layers with the confidence layers
-// Define an inner join.
-var innerJoin = ee.Join.inner();
 
-// Specify an equals filter for image timestamps.
-var filterDateEq = ee.Filter.equals({
-    leftField:'system:time_start', 
-    rightField: 'system:time_start'
-});
-
-// Apply the join.
-var innerJoinedFire = innerJoin.apply(ccifire, ccifireconf, filterDateEq);
-var joinedFire = innerJoinedFire.map(function(feature) {
-  return ee.Image.cat(feature.get('primary'), feature.get('secondary'));
-});
+print(CCIfire);
 
 // Extract fire and no fire areas
 var applyMaskFire = function (image) {
   image = ee.Image(image);
-  return image.updateMask(image.select('b1_1').gt(confLevFire));
+  return image.updateMask(image.select('ConfidenceLevel').gt(confLevFire));
 };
 
-//var applyMasknoFire = function (image) {
-//  image = ee.Image(image);
-//  return image.updateMask(image.select('b1').gt(-1));
-//};
+var FireColl = ee.ImageCollection(CCIfire).map(applyMaskFire).filterBounds(geometry);
 
-var FireColl = ee.ImageCollection(joinedFire).map(applyMaskFire).filterBounds(geometry);
-//print(FireColl)
-//var noFireColl  = ee.ImageCollection(joinedFire).map(applyMasknoFire).filterBounds(geometry);
-
-var fireAreas = FireColl.filterDate(startyear, endyear).select(['b1']).max();
+var fireAreas = FireColl.filterDate(startyear, endyear).select(['BurnDate']).max();
 Map.addLayer(fireAreas);
-//var noFireAreas = noFireColl.select(['b1_1']).max();
-//var noFireAreas = noFireAreas.updateMask(noFireAreas.lt(confLevNoFire));
 
 // -----------------------------------------------------------------
 // Combine to single masked image with ecoregion and date of disturbance
 
 // area with forest loss after 2000, covered by forest until 2000, and only containing natural LC types since 1985
-var smpleArea = han.select('lossyear').addBands(ecoregIm);// generate raster with two bands: forest loss year and ecoregions 
-smpleArea = smpleArea.updateMask(han.select('lossyear').gt(0)).updateMask(han.select('datamask').eq(1));// mask image
-smpleArea = smpleArea.updateMask(han.select('loss').eq(1))// mask image
+var smpleArea = han.select('lossyear').addBands(ecoregIm);// generate raster with two bands: forest loss year and ecoregions
+// smpleArea = smpleArea.updateMask(han.select('lossyear').gt(0)).updateMask(han.select('datamask').eq(1));// mask image
+// smpleArea = smpleArea.updateMask(han.select('loss').eq(1))// mask image
 var smpleArea = smpleArea.updateMask(lcmask2000.eq(16)).updateMask(lcmask.eq(35));// mask image
 var smpleArea = smpleArea.updateMask(fireAreas.gt(0))
 

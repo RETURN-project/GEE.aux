@@ -23,4 +23,5 @@ Imports: bfast,
          dplyr,
          lubridate,
          tidyr,
-         readr
+         readr,
+         testthat

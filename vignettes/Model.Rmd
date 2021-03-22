@@ -1,0 +1,244 @@
+---
+title: "GAM model"
+author: "Wanda De Keersmaecker"
+date: "3/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## User inputs
+
+```{r inputs}
+# path to folder with data
+ifolder <- './inst/testdata/'
+# path to folder where outputs should be stored
+ofolder <- './inst/testdata/'
+# name of data files
+
+```
+
+## Load data
+
+```{r cars}
+load(file.path(ifolder, 'df_covar_tot.Rdata'))
+load(file.path(ifolder, 'df_rec_tot'))
+load(file.path(ifolder, 'df_distW.Rdata'))
+load(file.path(ifolder, 'df_distN.Rdata'))
+
+# load(file.path(ifolder, 'MAP'))
+# load(file.path(ifolder, 'MAT'))
+# load(file.path(ifolder, 'Pseas'))
+
+# df_distW$id <- as.numeric(df_distW$id)
+
+# merge dataframes
+total <- merge(df_rec_tot, df_covar,by=c("id","ecoReg", "coords")) 
+total$id <- as.numeric(total$id)
+total$ecoReg <- as.numeric(total$ecoReg)
+total <- merge(total, df_distW, by=c("id", "ecoReg", "coords"))
+total <- merge(total, df_distN, by=c("id", "ecoReg", "coords"))
+```
+
+
+## Prepare data
+
+```{r cars}
+# library(Information)
+library(dplyr)
+library(tidyr)
+total_val <- total#[complete.cases(total[ , 5:6]),]
+
+total_val <- total_val %>%
+      separate(coords,into=c('lon','lat'),sep=", ",convert=TRUE)
+# total_val$ecoReg <- as.factor(as.numeric(total_val$ecoReg))
+total_val$CEC_000_005 <- as.numeric(total_val$CEC_000_005)
+total_val$CEC_005_015 <- as.numeric(total_val$CEC_005_015)
+total_val$CEC_015_030 <- as.numeric(total_val$CEC_015_030)
+total_val$CEC_030_060 <- as.numeric(total_val$CEC_030_060)
+total_val$CEC_060_100 <- as.numeric(total_val$CEC_060_100)
+total_val$CEC_100_200 <- as.numeric(total_val$CEC_100_200)
+total_val$Nitro_000_005 <- as.numeric(total_val$Nitro_000_005)
+total_val$Nitro_005_015 <- as.numeric(total_val$Nitro_005_015)
+total_val$Nitro_015_030 <- as.numeric(total_val$Nitro_015_030)
+total_val$Nitro_030_060 <- as.numeric(total_val$Nitro_030_060)
+total_val$Nitro_060_100 <- as.numeric(total_val$Nitro_060_100)
+total_val$Nitro_100_200 <- as.numeric(total_val$Nitro_100_200)
+total_val$SOC_000_005 <- as.numeric(total_val$SOC_000_005)
+total_val$SOC_005_015 <- as.numeric(total_val$SOC_005_015)
+total_val$SOC_015_030 <- as.numeric(total_val$SOC_015_030)
+total_val$SOC_030_060 <- as.numeric(total_val$SOC_030_060)
+total_val$SOC_060_100 <- as.numeric(total_val$SOC_060_100)
+total_val$SOC_100_200 <- as.numeric(total_val$SOC_100_200)
+total_val$Silt_000_005 <- as.numeric(total_val$Silt_000_005)
+total_val$Silt_005_015 <- as.numeric(total_val$Silt_005_015)
+total_val$Silt_015_030 <- as.numeric(total_val$Silt_015_030)
+total_val$Silt_030_060 <- as.numeric(total_val$Silt_030_060)
+total_val$Silt_060_100 <- as.numeric(total_val$Silt_060_100)
+total_val$Silt_100_200 <- as.numeric(total_val$Silt_100_200)
+total_val$Clay_000_005 <- as.numeric(total_val$Clay_000_005)
+total_val$Clay_005_015 <- as.numeric(total_val$Clay_005_015)
+total_val$Clay_015_030 <- as.numeric(total_val$Clay_015_030)
+total_val$Clay_030_060 <- as.numeric(total_val$Clay_030_060)
+total_val$Clay_060_100 <- as.numeric(total_val$Clay_060_100)
+total_val$Clay_100_200 <- as.numeric(total_val$Clay_100_200)
+total_val$CEC_000_030 <- (total_val$CEC_000_005 / 6) + (total_val$CEC_005_015/3) + (total_val$CEC_015_030/2)
+total_val$SOC_000_030 <- (total_val$SOC_000_005 / 6) + (total_val$SOC_005_015/3) + (total_val$SOC_015_030/2)
+total_val$Nitro_000_030 <- (total_val$Nitro_000_005 / 6) + (total_val$Nitro_005_015/3) + (total_val$Nitro_015_030/2)
+total_val$CEC_000_015 <- (total_val$CEC_000_005 / 3) + (total_val$CEC_005_015*2/3) 
+total_val$SOC_000_015 <- (total_val$SOC_000_005 / 3) + (total_val$SOC_005_015*2/3) 
+total_val$Nitro_000_015 <- (total_val$Nitro_000_005 / 3) + (total_val$Nitro_005_015*2/3) 
+total_val$Clay_000_015 <- (total_val$Clay_000_005 / 3) + (total_val$Clay_005_015*2/3) 
+total_val$Silt_000_015 <- (total_val$Silt_000_005 / 3) + (total_val$Silt_005_015*2/3) 
+total_val$ecoReg <-as.numeric(total_val$ecoReg)
+
+p_mat <- raster::extract(x=MAT,y=cbind(total_val$lon, total_val$lat))
+p_map <- raster::extract(x=MAP,y=cbind(total_val$lon, total_val$lat))
+p_Pseas <- raster::extract(x=Pseas,y=cbind(total_val$lon, total_val$lat))
+
+total_val$MAT <- p_mat
+total_val$MAP <- p_map
+total_val$Pseas <- p_Pseas
+```
+
+```{r explore}
+library(reshape)
+total_melt <- melt(total_val[,c(2,10,16,22,28,34,40,41,42,43,44,47)])
+
+library(ggplot2)
+library(devtools)
+png(file.path(ifolder, 'hist_covar_tot.png'), width = 1500, height = 300)
+total_melt %>%
+  ggplot( aes(x=value, fill=variable)) +
+    geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity')  +
+    labs(fill="") + facet_grid(cols = vars(total_melt$variable), scales = 'free')
+dev.off()
+
+total_val <- total_val[complete.cases(total_val),]
+
+total_melt <- melt(total_val[,c(2,10,16,22,28,34,40,41,42,43,44,47)])
+
+png(file.path(ifolder, 'hist_covar_sel.png'), width = 1500, height = 300)
+total_melt %>%
+  ggplot( aes(x=value, fill=variable)) +
+    geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity')  +
+    labs(fill="") + facet_grid(cols = vars(total_melt$variable), scales = 'free')
+dev.off()
+```
+
+```{r lin_mod}
+total_val$ecoReg <-as.factor(total_val$ecoReg)
+
+library(arm)
+library(spdep)
+total_val <- total_val[complete.cases(total_val),]
+
+lm_R80PTC1 <- lm(R80P ~ TCmean500, data = total_val)
+lm_R80PTC2 <- lm(R80P ~ TCmean1000, data = total_val)
+lm_R80PTC3 <- lm(R80P ~ TCmean5000, data = total_val)
+AIC(lm_R80PTC1, lm_R80PTC2, lm_R80PTC3)
+lm_R80PN1 <- lm(R80P ~ Nitro_000_005, data = total_val)
+lm_R80PN2 <- lm(R80P ~ Nitro_000_015, data = total_val)
+lm_R80PN3 <- lm(R80P ~ Nitro_005_015, data = total_val)
+lm_R80PN4 <- lm(R80P ~ Nitro_015_030, data = total_val)
+lm_R80PN5 <- lm(R80P ~ Nitro_000_030, data = total_val)
+AIC(lm_R80PN1, lm_R80PN2, lm_R80PN3,lm_R80PN4,lm_R80PN5)
+
+lm_R80Ptot <- lm(R80P ~ TCmean500 + Elev + Slope  + Nitro_000_015  + Dist_N + Dist_W  + Pseas + CWD + MAP, data = total_val)
+
+lm_R80P <- step(lm_R80Ptot, direction = 'backward')
+
+# lm_R80P <- lm(R80P ~ Elev + Slope + Nitro_000_015  + Dist_N +  Pseas + CWD, data = total_val)
+
+lms_R80P <- arm::standardize(lm_R80P)
+summary(lms_R80P)
+total_val$resR80P1 <- residuals(lms_R80P)
+total_val$fitR80P1 <- fitted(lms_R80P)
+library(faraway)
+vif(lms_R80P)# vif greater than 5 is problematic
+
+
+library(adegenet)
+library(spdep)
+xy <- t(as.matrix(rbind(total_val$lon,total_val$lat)))#matrix(runif(100),ncol=2)
+yourcn <- chooseCN(xy, a = 1, dmin = 0.0001, result.type = "listw")
+lm.morantest(lms_R80P, yourcn, alternative="two.sided")
+
+lm.LMtests(lms_R80P, yourcn, test = c("LMerr","LMlag","RLMerr","RLMlag","SARMA"))
+
+
+# coords <- as.matrix(cbind(long, $lat)) 
+# coord.nb <- dnearneigh(coords, 0, 10000 longlat=TRUE) 
+# coord.list <- nb2listw(coord.nb, style="W") 
+# lianasp.lm <- lm(lianasprich ~ log(averdist) + dsl + lianadens +wooddens)
+# lm.morantest(lianasp.lm, coord.list, alternative="two.sided")
+
+# total_val$sResR80P1 <- scale(lms_R80P)[,1]
+# total_val_sf = st_as_sf(total_val, coords = c("lon", "lat"), crs = 4326)
+# total_val_sp <- as(total_val_sf, "Spatial")
+#Then we create a list of neighbours using the Queen criteria
+# w <- poly2nb(total_val_sp, row.names=total_val_sp$id)
+
+# R80P_sp <- as(lm_R80P, "Spatial")
+#Then we create a list of neighbours using the Queen criteria
+# w <- poly2nb(ncovr_sp, row.names=ncovr_sp$FIPSNO)
+
+```
+
+```{r gam}
+library(mgcv)
+
+mod_R80P <- gam(R80P ~ s(TCmean1000, bs = 'ps') +  s(Elev, bs = 'ps', k=80) +  s(Slope, bs = 'ps', k=80)  +  s(SOC_000_005, bs = 'ps', k=200) +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+
+mod_R80P1 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Elev, bs = 'ps')  + s(CWD, bs = 'ps')  + s(SOC_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_N, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+
+mod_R80P2 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(SOC_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_N, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+
+mod_R80P3a <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Nitro_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) , data = total_val, method = 'REML', select = 'TRUE')
+
+
+
+kval = 45
+mod_R80P3b <- gam(R80P ~ s(TCmean1000,k=kval)   +  s(Slope ,k=kval)  +  s(CWD,k=kval)  + s(Nitro_000_015,k=kval)  , data = total_val, method = 'REML', select = 'TRUE')# , bs='gp', k=200, m=2 + s(CWD, bs = 'ps',k=kval) + + s(MAP, bs = 'ps',k=kval) + s(Pseas, bs = 'ps',k=kval) , bs = 'ps'
+
+summary(mod_R80P3b)
+plot(mod_R80P3b)
+gam.check(mod_R80P3b, k.rep = 1000)
+concurvity(mod_R80P3b)# worst larger than 0.8 needs closer inspection (full=T) -> removal of variables that cause problems
+shapiro.test(residuals(mod_R80P3b, type = 'response'))
+plot(mod_R80P3b, seWithMean = TRUE, shift = coef(mod_R80P3b)[1], residuals = TRUE,
+     pch = 1, cex = 1, shade=T)
+
+
+mod_R80P3c <- gam(R80P ~ s(TCmean1000, bs = 'ps') + s(Dist_N, bs = 'ps') +   s(Slope, bs = 'ps')  +  s(MAP, bs = 'ps')  + s(Nitro_000_015, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+
+mod_R80P4 <- gam(R80P ~    s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Nitro_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_N, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+
+# mod_R80P4 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Clay_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+
+mod_R80P5 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Silt_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+
+# mod_R80P6 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(CEC_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+
+summary(mod_R80P)
+plot(mod_R80P)
+gam.check(mod_R80P, k.rep = 1000)
+concurvity(mod_R80P)
+shapiro.test(residuals(mod_R80P, type = 'response'))
+
+mod_YrYr <- gam(YrYr ~ s(TCmean500, bs = 'ps') +  s(Elev, bs = 'ps') +  s(Slope, bs = 'ps') +  s(Aspect, bs = 'ps') + s(CEC_000_005, bs = 'ps') + s(lon, lat, bs='gp', k=200, m=2), data = total_val, method = 'REML', select = 'TRUE')
+summary(mod_YrYr)
+plot(mod_YrYr)
+gam.check(mod_YrYr, k.rep = 1000)
+concurvity(mod_YrYr)
+
+# IV <- create_infotables(data=total_val, y="RRI", ncore=2)
+map_data('RRI') %>%
+  plot_geo(x = ~total_val$lon, y = ~total_val$lat) %>%
+  add_markers(color=~RRI,
+              colors=pal,
+              opacity=.66,
+              data=as_tibble(total_val))
+```

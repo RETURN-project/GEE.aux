@@ -10,7 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(zoo)
 library(GEE.aux)
-library(tidyverse)
+library(tidyverse)<
+  
 
 library(bfast)
 library(strucchange)
@@ -26,7 +27,7 @@ ifolder <- '../inst/testdata/'
 # path to folder where outputs should be stored
 ofolder <- '../inst/testdata/'
 # name of data files
-ifile <- 'samples_forest_fire_nat_n30.csv'
+ifile <- 'samples_forest_fire_nat_n1000_26000_28000.csv'
 
 confLevFire <- 95# mimimum confidence level to recognize a fire event
 
@@ -79,6 +80,7 @@ firedts <- as.Date(names(fire_conf)[startsWith(names(fire_conf),"1") | startsWit
 # get fire events per time series
 fireDts <- lapply(1:dim(fire_doy)[1], function(i){getFireDate(as.numeric(fire_conf[i,as.character(firedts)]), as.numeric(fire_doy[i,as.character(firedts)]),firedts, confLevFire)})
 # save results
+save(fireDts, file = file.path(ifolder, paste0('fire_', tools::file_path_sans_ext(ifile), '.Rdata')))# save the result
 
 ```
 
@@ -144,13 +146,14 @@ df_lst <-  lapply(1:nts,function(i){
     if(!is.na(tdist[ii])){
       calcRecMetrics(tsi, tdist[ii], obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart, tbp, selBreak, chkBrk, timeThres)
     }else{
-      list('RRI' = NA, 'R80P' = NA, 'YrYr' = NA)
+      list('RRI' = NA, 'R80P' = NA, 'YrYr' = NA , 'impact' = NA)
     }})
 })
 df_fr <- as.data.frame(t(data.frame(do.call(cbind.data.frame,df_lst))))
 df_fr$RRI <- unlist(df_fr$RRI)
 df_fr$R80P <- unlist(df_fr$R80P)
 df_fr$YrYr <- unlist(df_fr$YrYr)
+df_fr$impact <- unlist(df_fr$impact)
 
 
 # add auxiliary data to the dataframe
@@ -158,6 +161,19 @@ df_rec <- cbind(dat_tidy[,auxcols], df_fr)
 # save result
 save(df_rec, file = file.path(ifolder,  paste0('rec_', tools::file_path_sans_ext(ifile), '.Rdata')))
 
+```
+
+## Generate shapefile of all valid recovery indicators
+
+```{r shp}
+library(raster)
+df_rec_val <- df_rec[complete.cases(df_rec),]
+df_rec_val <- df_rec_val %>%
+      separate(coords,into=c('lon','lat'),sep=", ",convert=TRUE)
+coordinates(df_rec_val)=~lon+lat
+proj4string(df_rec_val)<- CRS("+proj=longlat +datum=WGS84")
+raster::shapefile(df_rec_val, file.path(ifolder,"samples_forest_fire_nat_n1000_VAL.shp"))
+# this shapefile should be uploaded to the GEE in order to dll covariates
 ```
 
 # Plot time series

@@ -129,6 +129,16 @@ rri <- function(ts, ys, tpert=0, ts_pre=-1, ts_post=c(4, 5)) {
   return(delta_rec / delta_dist)
 }
 
+#' Disturbance impact
+#'
+#' @param ts Vector containing the times (same size as ys). Perturbation assumed to happen at 0
+#' @param ys Vector containing the values (same size as ts)
+#' @param tpert Time of the perturbation. Default set to 0 yr
+#' @param ts_pre Sampling times for estimating Vpre. Default set to -1
+#'
+#' @return the disturbance impact
+#' @export
+#'
 d_dist <- function(ts, ys, tpert=0, ts_pre=-1) {
   # Auxiliary interpolation function. Given a time, returns the corresponding value.
   # If the time is in ts, returns the corresponding ys. If the time is not in ts,
@@ -147,6 +157,30 @@ d_dist <- function(ts, ys, tpert=0, ts_pre=-1) {
 
   return(delta_dist)
 }
+
+#' Pre-disturbance state
+#'
+#' @param ts Vector containing the times (same size as ys). Perturbation assumed to happen at 0
+#' @param ys Vector containing the values (same size as ts)
+#' @param ts_pre Sampling times for estimating Vpre. Default set to -1
+#'
+#' @return the pre-disturbance state
+#' @export
+#'
+V_pre <- function(ts, ys, ts_pre=c(-1,-2)) {
+  # Auxiliary interpolation function. Given a time, returns the corresponding value.
+  # If the time is in ts, returns the corresponding ys. If the time is not in ts,
+  # returns a linearly interpolated value
+  V <- approxfun(x = ts, y = ys)
+
+  # The typical value before perturbation is defined as the average of the values
+  # sampled at the times contained in ts_pre
+  Vpre  <- mean(V(ts_pre))
+
+  # Return the result
+  return(Vpre)
+}
+
 #' Calculate recovery metrics
 #'
 #' Calculate recovery metrics from a time series with known disturbance date. The calcFrazier function derives the RRI, R80P and YrYr recovery indicators,
@@ -167,7 +201,7 @@ d_dist <- function(ts, ys, tpert=0, ts_pre=-1) {
 #' @param nDeltaStart indicates the start of the post-disturbance period for the YrYr metric (expressed as number of years after the disturbance)
 #' @param nDist number of years used to quantify the state during the disturbance
 #'
-#' @return a list containing the RRI recovery indicator, R80p recovery indicator, YrYr recovery indicator
+#' @return a list containing the RRI recovery indicator, R80p recovery indicator, YrYr recovery indicator, disturbance impact, and pre-disturbance state
 #' @export
 #'
 calcFrazier <- function(tsio, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart){
@@ -199,13 +233,14 @@ calcFrazier <- function(tsio, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDe
     R80P <- r80p(ts, ys, r = 0.8, ts_pre, ts_post)
     YrYr <- yryr(ts, ys, tpert, deltat)
     impact <- d_dist(ts, ys, tpert, ts_pre)
+    Vpre <- V_pre(ts, ys, ts_pre)
     # make list of recovery indicators as output of the function
-    lst <- list(RRI, R80P, YrYr, impact)
-    names(lst) <- c('RRI', 'R80P', 'YrYr', 'impact')
+    lst <- list(RRI, R80P, YrYr, impact, Vpre)
+    names(lst) <- c('RRI', 'R80P', 'YrYr', 'impact', 'Vpre')
     # give NA as output if not able to calculate the recovery indicators
   } else {
-    lst <- list(NA, NA, NA, NA)
-    names(lst) <- c('RRI', 'R80P', 'YrYr', 'impact')
+    lst <- list(NA, NA, NA, NA, NA)
+    names(lst) <- c('RRI', 'R80P', 'YrYr', 'impact', 'Vpre')
   }
   lst
 }
@@ -226,7 +261,7 @@ calcFrazier <- function(tsio, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDe
 #' @param chkBrk should time series be checked for breaks within the post- or pre-disturbance period?
 #' @param timeThres the maximum allowed time difference between the observed break and the disturbance [years]
 #'
-#' @return
+#' @return a list containing the RRI recovery indicator, R80p recovery indicator, YrYr recovery indicator, disturbance impact, and pre-disturbance state
 #' @export
 #'
 calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
@@ -285,12 +320,12 @@ calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, n
       # Calculate Frazier recovery metrics on BFAST trend component
       frz <- calcFrazier(as.numeric(tsi), (tbp+1), obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart)
     }else{
-      frz <- list(NA, NA, NA, NA)
-      names(frz) <- c('RRI', 'R80P', 'YrYr', 'impact')
+      frz <- list(NA, NA, NA, NA, NA)
+      names(frz) <- c('RRI', 'R80P', 'YrYr', 'impact', 'Vpre')
     }
   }else{
-    frz <- list(NA, NA, NA, NA)
-    names(frz) <- c('RRI', 'R80P', 'YrYr', 'impact')
+    frz <- list(NA, NA, NA, NA, NA)
+    names(frz) <- c('RRI', 'R80P', 'YrYr', 'impact', 'Vpre')
   }
 frz
 }

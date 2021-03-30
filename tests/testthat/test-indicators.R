@@ -90,6 +90,28 @@ test_that("NAs are tolerated", {
   expect_equal(rri(ts, ys), 1, tolerance = 1e-2)
 })
 
+context("Disturbance magnitude")
+
+test_that("NAs are tolerated", {
+  # Generate a time series
+  ts <- seq(1, 121, by = 1)
+  ts[5] <- NA # Introduce NA
+  ys <- c(rep(1,20),seq(-1,1,by=0.4),rep(1,95))#exponential(ts, pert = -2, offset = 1, thalf = 0.25) # plus a vector of values
+
+  expect_equal(d_dist(ts, ys, tpert=21, ts_pre=20), 2, tolerance = 1e-2)
+})
+
+context("pre-disturbance state")
+
+test_that("NAs are tolerated", {
+  # Generate a time series
+  ts <- seq(1, 121, by = 1)
+  ts[5] <- NA # Introduce NA
+  ys <- c(rep(1,20),seq(-1,1,by=0.4),rep(1,95))#exponential(ts, pert = -2, offset = 1, thalf = 0.25) # plus a vector of values
+
+  expect_equal(V_pre(ts, ys, ts_pre=20), 1, tolerance = 1e-2)
+})
+
 context("Calculate recovery metrics")
 
 test_that("Frazier - annual - too short time series", {
@@ -137,6 +159,8 @@ test_that("Frazier - annual", {
   expect_equal(metrics$RRI, rrim, tolerance = 1e-4)
   expect_equal(metrics$R80P, r80pm, tolerance = 1e-4)
   expect_equal(metrics$YrYr, yryrm, tolerance = 1e-4)
+  expect_equal(metrics$impact, dnbr, tolerance = 1e-4)
+  expect_equal(metrics$Vpre, pre, tolerance = 1e-4)
 })
 
 test_that("Frazier - dense", {
@@ -166,6 +190,8 @@ test_that("Frazier - dense", {
   expect_equal(metrics$RRI, rrim, tolerance = 1e-4)
   expect_equal(metrics$R80P, r80pm, tolerance = 1e-4)
   expect_equal(metrics$YrYr, yryrm, tolerance = 1e-4)
+  expect_equal(metrics$impact, dnbr, tolerance = 1e-4)
+  expect_equal(metrics$Vpre, pre, tolerance = 1e-4)
 })
 
 
@@ -202,6 +228,8 @@ test_that("calcRecMetrics - timing first disturbance", {
   expect_equal(met$RRI, rrim, tolerance = 1e-4)
   expect_equal(met$R80P, r80pm, tolerance = 1e-4)
   expect_equal(met$YrYr, yryrm, tolerance = 1e-4)
+  expect_equal(met$impact, dnbr, tolerance = 1e-4)
+  expect_equal(met$Vpre, pre, tolerance = 1e-4)
 })
 
 test_that("calcRecMetrics - timing close disturbance", {
@@ -237,6 +265,8 @@ test_that("calcRecMetrics - timing close disturbance", {
   expect_equal(met$RRI, rrim, tolerance = 1e-4)
   expect_equal(met$R80P, r80pm, tolerance = 1e-4)
   expect_equal(met$YrYr, yryrm, tolerance = 1e-4)
+  expect_equal(met$impact, dnbr, tolerance = 1e-4)
+  expect_equal(met$Vpre, pre, tolerance = 1e-4)
 })
 
 test_that("calcRecMetrics - timing max disturbance", {
@@ -272,6 +302,8 @@ test_that("calcRecMetrics - timing max disturbance", {
   expect_equal(met$RRI, rrim, tolerance = 1e-4)
   expect_equal(met$R80P, r80pm, tolerance = 1e-4)
   expect_equal(met$YrYr, yryrm, tolerance = 1e-4)
+  expect_equal(met$impact, dnbr, tolerance = 1e-4)
+  expect_equal(met$Vpre, pre, tolerance = 1e-4)
 })
 
 test_that("calcRecMetrics - no negative break", {
@@ -296,6 +328,8 @@ test_that("calcRecMetrics - no negative break", {
   expect_equal(met$RRI, NA, tolerance = 1e-4)
   expect_equal(met$R80P, NA, tolerance = 1e-4)
   expect_equal(met$YrYr, NA, tolerance = 1e-4)
+  expect_equal(met$impact, NA, tolerance = 1e-4)
+  expect_equal(met$Vpre, NA, tolerance = 1e-4)
 
   tsi <- c(rep(1,24), seq(2, -1, length.out=72), rep(-1,24), seq(-5, 0.5, length.out=72),rep(0.5,24), seq(-8, 0.5, length.out=72),rep(0.5,24))
   met <- calcRecMetrics(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart,
@@ -313,6 +347,8 @@ test_that("calcRecMetrics - no negative break", {
   expect_equal(met$RRI, rrim, tolerance = 1e-4)
   expect_equal(met$R80P, r80pm, tolerance = 1e-4)
   expect_equal(met$YrYr, yryrm, tolerance = 1e-4)
+  expect_equal(met$impact, dnbr, tolerance = 1e-4)
+  expect_equal(met$Vpre, pre, tolerance = 1e-4)
 
 })
 
@@ -338,6 +374,8 @@ test_that("calcRecMetrics - no positive slope", {
   expect_equal(met$RRI, NA, tolerance = 1e-4)
   expect_equal(met$R80P, NA, tolerance = 1e-4)
   expect_equal(met$YrYr, NA, tolerance = 1e-4)
+  expect_equal(met$impact, NA, tolerance = 1e-4)
+  expect_equal(met$Vpre, NA, tolerance = 1e-4)
 })
 
 test_that("calcRecMetrics - timing between break and disturbance", {
@@ -362,6 +400,8 @@ test_that("calcRecMetrics - timing between break and disturbance", {
   expect_equal(met$RRI, NA, tolerance = 1e-4)
   expect_equal(met$R80P, NA, tolerance = 1e-4)
   expect_equal(met$YrYr, NA, tolerance = 1e-4)
+  expect_equal(met$impact, NA, tolerance = 1e-4)
+  expect_equal(met$Vpre, NA, tolerance = 1e-4)
 })
 
 test_that("calcRecMetrics - break in post-disturbance period", {
@@ -386,6 +426,8 @@ test_that("calcRecMetrics - break in post-disturbance period", {
   expect_equal(met$RRI, NA, tolerance = 1e-4)
   expect_equal(met$R80P, NA, tolerance = 1e-4)
   expect_equal(met$YrYr, NA, tolerance = 1e-4)
+  expect_equal(met$impact, NA, tolerance = 1e-4)
+  expect_equal(met$Vpre, NA, tolerance = 1e-4)
 })
 
 test_that("calcRecMetrics - break in pre-disturbance period", {
@@ -410,4 +452,6 @@ test_that("calcRecMetrics - break in pre-disturbance period", {
   expect_equal(met$RRI, NA, tolerance = 1e-4)
   expect_equal(met$R80P, NA, tolerance = 1e-4)
   expect_equal(met$YrYr, NA, tolerance = 1e-4)
+  expect_equal(met$impact, NA, tolerance = 1e-4)
+  expect_equal(met$Vpre, NA, tolerance = 1e-4)
 })

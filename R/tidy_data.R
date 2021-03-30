@@ -15,7 +15,7 @@ tidy_data <- function(x, col_names){
   y <-  substr(x,2,str_length(x)-1)
   # replace the "]" by "["
   z <- gsub( "]", "[", y )
-  z <- z[-1]
+  #z <- z[-1]
   # write to temporary file
   tmpf <- tempfile()
   cat(z, file=tmpf, sep="\n")

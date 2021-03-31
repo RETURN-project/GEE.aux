@@ -9,43 +9,21 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
+# inputs
 ```{r inputs}
-ifolder <- '../inst/testdata/'
-# load(file.path(ifolder,paste0('rec_samples_forest_fire_nat_n1000_',10000,'_',12000,'.Rdata')))
-# for (i in seq(0,40000,by =2000)){
-#   if(i == 40000){endpnt = 'None'}else{endpnt = i+2000}
-#   
-#   load(file.path(ifolder,paste0('rec_samples_forest_fire_nat_n1000_',i,'_',endpnt,'.Rdata')))
-#   print(df_rec$id[length(df_rec$id)])
-# }
-# load(file.path(ifolder,paste0('rec_samples_forest_fire_nat_n1000_',26000,'_',28000,'.Rdata')))
-# load(file.path(ifolder,paste0('tidy_samples_forest_fire_nat_n1000_',26000,'_',28000,'.Rdata')))
+ifolder <- '../inst/testdata/' # folder with all processed data
+ofolder <- '../inst/testdata/' # folder with all processed data
+ifile <- 'samples_forest_fire_nat_n1000_' # base name of the input file
 
-for (i in seq(0,40000,by =2000)){
-  if(i == 40000){endpnt = 'None'}else{endpnt = i+2000}
-  
-  load(file.path(ifolder,paste0('rec_samples_forest_fire_nat_n1000_',i,'_',endpnt,'.Rdata')))
-  if(i==0){df_rec_tot <- df_rec}else{df_rec_tot <- rbind(df_rec_tot, df_rec)}
-  rm(df_rec)
-  
-  load(file.path(ifolder,paste0('seg_samples_forest_fire_nat_n1000_',i,'_',endpnt,'.Rdata')))
-  if(i==0){seg_tot <- seg}else{seg_tot <- c(seg_tot, seg)}
-  rm(seg)
-  
-  load(file.path(ifolder,paste0('reg_samples_forest_fire_nat_n1000_',i,'_',endpnt,'.Rdata')))
-  if(i==0){df_out_tot <- df_out}else{df_out_tot <- rbind(df_out_tot, df_out)}
-  rm(df_out)
-  
-  load(file.path(ifolder,paste0('fire_samples_forest_fire_nat_n1000_',i,'_',endpnt,'.Rdata')))
-  if(i==0){fireDts_tot <- fireDts}else{fireDts_tot <- c(fireDts_tot, fireDts)}
-  rm(fireDts)
-}
+```
 
-save(df_rec_tot, file = file.path(ifolder,paste0('df_rec_tot')))
-save(df_out_tot, file = file.path(ifolder,paste0('df_out_tot')))
-save(fireDts_tot, file = file.path(ifolder,paste0('fireDts_tot')))
-save(seg_tot, file = file.path(ifolder,paste0('seg_tot')))
+# import data
+```{r load}
+load(file.path(ofolder,paste0('df_rec_tot')))
+load(file.path(ofolder,paste0('df_out_tot')))
+load(file.path(ofolder,paste0('fireDts_tot')))
+load(file.path(ofolder,paste0('seg_tot')))
+
 dts <- as.Date(names(df_out_tot)[-c(1:4)])
 ```
 
@@ -209,5 +187,129 @@ ggplot() +
     scale_colour_gradientn(colours = terrain.colors(10), 
                         limits = c(0, 0.007), oob = scales::squish)
 dev.off()
+
+```
+# Plot time series
+
+```{r plot}
+getPlotData <- function(id){
+  fdts <- fireDts[[id]][1]# only take the first fire
+  fdts[!is.na(fdts)] <- rollback(fdts[!is.na(fdts)], roll_to_first = T)
+  # tdist <- which(dts %in% fdts)# convert fire date to observation number
+  # distyr <- as.numeric(df_out$lossyr[id])
+  lossdt_start1 <- seq(fdts, length = 2, by = "-18 months")[2]
+  lossdt_end1 <- seq(fdts, length = 2, by = "+18 months")[2]
+
+  obsi <- df_out[id,-c(1:4)]
+  trend <- seg[[id]]$trend
+  met_rri <- df_rec$RRI[id]
+  met_r80p <- df_rec$R80P[id]
+  met_yryr <- df_rec$YrYr[id]
+  out <- list(fdts, fdts,fdts,lossdt_start1,lossdt_end1,obsi,trend,met_rri,met_r80p,met_yryr)
+  names(out)<- c('distyr', 'lossdt_start','lossdt_end','lossdt_start1','lossdt_end1','obsi','trend','met_rri','met_r80p','met_yryr')
+  return(out)
+}
+
+# plot time series with recovery metrics that are not equal to NA
+for (id in which(!is.na(df_rec$RRI))){
+  dat <- getPlotData(id)
+  plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+}
+
+# fraction of time series with recovery metric that does not equal NA
+fracRRI <- sum(!is.na(df_rec$RRI))/length(df_rec$RRI)
+fracR80p <- sum(!is.na(df_rec$R80P))/length(df_rec$R80P)
+fracYrYr <- sum(!is.na(df_rec$YrYr))/length(df_rec$YrYr)
+
+# plot time series with max, median and min RRI
+id <- which(df_rec$RRI == max(df_rec$RRI, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+RRI_vals <- df_rec$RRI[!is.na(df_rec$RRI)]
+RRI_med <- RRI_vals[rank(RRI_vals) == floor(length(RRI_vals)/2)]
+id <- which(df_rec$RRI == RRI_med)
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+id <- which(df_rec$RRI == min(df_rec$RRI, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+# plot time series with max, median and min R80p
+id <- which(df_rec$R80P == max(df_rec$R80P, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+R80P_vals <- df_rec$R80P[!is.na(df_rec$R80P)]
+R80P_med <- R80P_vals[rank(R80P_vals) == floor(length(R80P_vals)/2)]
+id <- which(df_rec$R80P == R80P_med)
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+id <- which(df_rec$R80P == min(df_rec$R80P, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+# plot time series with max, median and min YrYr
+id <- which(df_rec$YrYr == max(df_rec$YrYr, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+YrYr_vals <- df_rec$YrYr[!is.na(df_rec$YrYr)]
+YrYr_med <- YrYr_vals[rank(YrYr_vals) == floor(length(YrYr_vals)/2)]
+id <- which(df_rec$YrYr == YrYr_med)
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+id <- which(df_rec$YrYr == min(df_rec$YrYr, na.rm = T))
+dat <- getPlotData(id)
+plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$lossdt_start1,dat$lossdt_end1,
+           dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr)
+
+
+```
+
+# Spatial plots
+```{r, spatial_plot}
+# Spatial plot
+
+temp <- str_split(df_rec$coords, ", ")
+lon <- as.numeric(unlist(lapply(temp, function(x) x[1]))) 
+lat <- as.numeric(unlist(lapply(temp, function(x) x[2]))) 
+rm(temp)
+df_rec$lat <- lat
+df_rec$lon <- lon
+
+coordinates(df_rec) <- ~lon+lat
+proj4string(df_rec) <- CRS("+init=epsg:4326")
+
+df_rec <- st_as_sf(df_rec,coords = c('lon','lat'))
+
+# Vector of Brazilian borders
+br <- st_as_sf(getData('GADM', country = 'BRA', level = 1))# retrieve data
+br <- st_transform(br, crs =  crs(df_rec))# convert CRS 
+
+#generate plot
+ggplot() +
+    geom_sf(data = br, color = 'black') +
+    geom_sf(data = df_rec[!is.na(df_rec$RRI),],  aes(col = RRI, fill = RRI))
+
+ggplot() +
+    geom_sf(data = br, color = 'black') +
+    geom_sf(data = df_rec[!is.na(df_rec$R80P),],  aes(col = R80P, fill = R80P))
+
+ggplot() +
+    geom_sf(data = br, color = 'black') +
+    geom_sf(data = df_rec[!is.na(df_rec$YrYr),],  aes(col = YrYr, fill = YrYr))
 
 ```

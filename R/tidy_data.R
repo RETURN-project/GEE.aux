@@ -59,4 +59,28 @@ extract_date <- function(x){
   as.numeric(unlist(L))
 }
 
+#' Tidy covariate data downloaded from GEE
+#'
+#' @param x  the input data
+#' @param col_names column names associated with the input data
+#'
+#' @return
+#' @export
+#'
+tidy_covarData <- function(x, col_names){
+  # a <- str_split(tools::file_path_sans_ext(file),"_")%>%unlist
+  # remove the '[' at the beginning and end of the file
+  y <-  substr(x,2,str_length(x)-1)
+  # replace the "]" by "["
+  z <- gsub( "]", "[", y )
+  # z <- z[-1]
+  # write to temporary file
+  tmpf <- tempfile()
+  cat(z, file=tmpf, sep="\n")
+
+  # load data again, to get rid of the "[" seperator and assign column names
+  dat_orig <- readr::read_csv(tmpf, quote="[",
+                              col_names=col_names)
+  return(dat_orig)
+}
 

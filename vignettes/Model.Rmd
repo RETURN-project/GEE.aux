@@ -13,11 +13,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r inputs}
 # path to folder with data
-ifolder <- './inst/testdata/'
+ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/testdata/'#'./inst/testdata/'
 # path to folder where outputs should be stored
-ofolder <- './inst/testdata/'
+ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/testdata/'#'./inst/testdata/'
 # name of data files
 
+
+sqplot <- function(x,y,lwab =3,...){
+  all <- c(x,y)
+  range <- c(min(all), max(all))
+  par(pty="s")
+  plot(x, y, xlim=range, ylim=range, asp=1,...)
+  abline(0,1, col = 'red', lw = lwab)
+}
 ```
 
 ## Load data
@@ -28,9 +36,9 @@ load(file.path(ifolder, 'df_rec_tot'))
 load(file.path(ifolder, 'df_distW.Rdata'))
 load(file.path(ifolder, 'df_distN.Rdata'))
 
-# load(file.path(ifolder, 'MAP'))
-# load(file.path(ifolder, 'MAT'))
-# load(file.path(ifolder, 'Pseas'))
+load(file.path(ifolder, 'MAP'))
+load(file.path(ifolder, 'MAT'))
+load(file.path(ifolder, 'Pseas'))
 
 # df_distW$id <- as.numeric(df_distW$id)
 
@@ -40,6 +48,9 @@ total$id <- as.numeric(total$id)
 total$ecoReg <- as.numeric(total$ecoReg)
 total <- merge(total, df_distW, by=c("id", "ecoReg", "coords"))
 total <- merge(total, df_distN, by=c("id", "ecoReg", "coords"))
+
+total <- dplyr::distinct(total)
+
 ```
 
 
@@ -49,6 +60,7 @@ total <- merge(total, df_distN, by=c("id", "ecoReg", "coords"))
 # library(Information)
 library(dplyr)
 library(tidyr)
+library(raster)
 total_val <- total#[complete.cases(total[ , 5:6]),]
 
 total_val <- total_val %>%
@@ -101,14 +113,19 @@ p_Pseas <- raster::extract(x=Pseas,y=cbind(total_val$lon, total_val$lat))
 total_val$MAT <- p_mat
 total_val$MAP <- p_map
 total_val$Pseas <- p_Pseas
+
+total_val <- total_val[complete.cases(total_val),]
+total_val <- dplyr::distinct(total_val)
+
 ```
 
 ```{r explore}
 library(reshape)
-total_melt <- melt(total_val[,c(2,10,16,22,28,34,40,41,42,43,44,47)])
-
 library(ggplot2)
 library(devtools)
+# Histogram of covariates
+total_melt <- melt(total_val[,c(9,10,42,43,56,57,58,45,52,62,63,41)])
+
 png(file.path(ifolder, 'hist_covar_tot.png'), width = 1500, height = 300)
 total_melt %>%
   ggplot( aes(x=value, fill=variable)) +
@@ -116,16 +133,43 @@ total_melt %>%
     labs(fill="") + facet_grid(cols = vars(total_melt$variable), scales = 'free')
 dev.off()
 
-total_val <- total_val[complete.cases(total_val),]
 
-total_melt <- melt(total_val[,c(2,10,16,22,28,34,40,41,42,43,44,47)])
+# total_melt <- melt(total_val[,c(2,39,40,41,43,50,54,55,56,60,61)])
+# 
+# png(file.path(ifolder, 'hist_covar_sel.png'), width = 1500, height = 300)
+# total_melt %>%
+#   ggplot( aes(x=value, fill=variable)) +
+#     geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity')  +
+#     labs(fill="") + facet_grid(cols = vars(total_melt$variable), scales = 'free')
+# dev.off()
 
-png(file.path(ifolder, 'hist_covar_sel.png'), width = 1500, height = 300)
-total_melt %>%
-  ggplot( aes(x=value, fill=variable)) +
-    geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity')  +
-    labs(fill="") + facet_grid(cols = vars(total_melt$variable), scales = 'free')
+png(file.path(ifolder, 'Pairs_R80p_A.png'), width = 1400, height = 1100)
+pairs(~R80P+TCmean500 + Dist_N + Elev + Slope  + impact + Vpre, data=total_val,
+      upper.panel=panel.smooth, lower.panel=NULL, 
+      pch=20, main="Scatterplot Matrix", lwd = 3, labels = c('R80P','Tree cover 500', 'Distance no forest', "Elevation", "Slope", "Impact","Pre-value"))
 dev.off()
+
+
+png(file.path(ifolder, 'Pairs_R80p_B.png'), width = 1400, height = 1100)
+pairs(~R80P+ Nitro_000_015  + CEC_000_015  + SOC_000_015  +  Pseas + CWD + MAP , data=total_val,
+      upper.panel=panel.smooth, lower.panel=NULL, 
+       pch=20, main="Scatterplot Matrix", lwd = 3, labels = c("R80P", "Nitrogen", 'CEC'  , 'SOC',  'Precip. seasonality', 'CWD', 'MAP'))
+dev.off()
+
+png(file.path(ifolder, 'Pairs_YrYr_A.png'), width = 1400, height = 1100)
+pairs(~YrYr+TCmean500 + Dist_N + Elev + Slope  + impact + Vpre, data=total_val,
+      upper.panel=panel.smooth, lower.panel=NULL, 
+      pch=20, main="Scatterplot Matrix", lwd = 3, labels = c('YrYr','Tree cover 500', 'Distance no forest', "Elevation", "Slope", "Impact","Pre-value"))
+dev.off()
+
+
+png(file.path(ifolder, 'Pairs_YrYr_B.png'), width = 1400, height = 1100)
+pairs(~YrYr+ Nitro_000_015  + CEC_000_015  + SOC_000_015  +  Pseas + CWD + MAP , data=total_val,
+      upper.panel=panel.smooth, lower.panel=NULL, 
+       pch=20, main="Scatterplot Matrix", lwd = 3, labels = c("YrYr", "Nitrogen", 'CEC'  , 'SOC',  'Precip. seasonality', 'CWD', 'MAP'))
+dev.off()
+
+
 ```
 
 ```{r lin_mod}
@@ -133,12 +177,15 @@ total_val$ecoReg <-as.factor(total_val$ecoReg)
 
 library(arm)
 library(spdep)
-total_val <- total_val[complete.cases(total_val),]
+# total_val <- total_val[complete.cases(total_val),]
 
+# Select the most optimal tree cover range
 lm_R80PTC1 <- lm(R80P ~ TCmean500, data = total_val)
 lm_R80PTC2 <- lm(R80P ~ TCmean1000, data = total_val)
 lm_R80PTC3 <- lm(R80P ~ TCmean5000, data = total_val)
 AIC(lm_R80PTC1, lm_R80PTC2, lm_R80PTC3)
+
+# Select the most optimal soil depth
 lm_R80PN1 <- lm(R80P ~ Nitro_000_005, data = total_val)
 lm_R80PN2 <- lm(R80P ~ Nitro_000_015, data = total_val)
 lm_R80PN3 <- lm(R80P ~ Nitro_005_015, data = total_val)
@@ -146,99 +193,354 @@ lm_R80PN4 <- lm(R80P ~ Nitro_015_030, data = total_val)
 lm_R80PN5 <- lm(R80P ~ Nitro_000_030, data = total_val)
 AIC(lm_R80PN1, lm_R80PN2, lm_R80PN3,lm_R80PN4,lm_R80PN5)
 
-lm_R80Ptot <- lm(R80P ~ TCmean500 + Elev + Slope  + Nitro_000_015  + Dist_N + Dist_W  + Pseas + CWD + MAP, data = total_val)
-
-lm_R80P <- step(lm_R80Ptot, direction = 'backward')
-
-# lm_R80P <- lm(R80P ~ Elev + Slope + Nitro_000_015  + Dist_N +  Pseas + CWD, data = total_val)
-
-lms_R80P <- arm::standardize(lm_R80P)
-summary(lms_R80P)
+# generate a linear model without any spatial correlation structure
+dat_sel <- total_val
+lm_R80Ptot <- lm(R80P ~ TCmean500 + Dist_N + Elev + Slope  + Nitro_000_015  + CEC_000_015  + SOC_000_015   +  Pseas + CWD + MAP + impact + Vpre , data =dat_sel)
+lm_R80P <- step(lm_R80Ptot, direction = 'backward')# backward selection of relevant variables
+lms_R80P <- arm::standardize(lm_R80P)# scale coef of covariates to enhance comparison
+summary(lms_R80P)# 
+plot(lms_R80P)# check the model fit 
+plot(dat_sel$R80P,fitted(lms_R80P))
+abline(0,1, col = 'red')
 total_val$resR80P1 <- residuals(lms_R80P)
 total_val$fitR80P1 <- fitted(lms_R80P)
 library(faraway)
-vif(lms_R80P)# vif greater than 5 is problematic
-
+vif(lms_R80P)# vif greater than 5 is considered problematic
 
 library(adegenet)
 library(spdep)
+
+# check if the residuals have a significant spatial correlation structure
 xy <- t(as.matrix(rbind(total_val$lon,total_val$lat)))#matrix(runif(100),ncol=2)
-yourcn <- chooseCN(xy, a = 1, dmin = 0.0001, result.type = "listw")
-lm.morantest(lms_R80P, yourcn, alternative="two.sided")
+yourcn <- chooseCN(xy, type = 6, result.type = "listw")# 3 neighbors
+# yourcn <- chooseCN(xy, type = 7, a = 1, dmin = 0.0001, result.type = "listw")
+mortst <- lm.morantest(lms_R80P, yourcn, alternative="two.sided")
 
-lm.LMtests(lms_R80P, yourcn, test = c("LMerr","LMlag","RLMerr","RLMlag","SARMA"))
+# run lagrange multiplier test to know which spatial model suits the data
+lagtst <- lm.LMtests(lms_R80P, yourcn, test = c("LMerr","LMlag","RLMerr","RLMlag"))#,"SARMA"
+library(sf)
+dat_scale <- cbind(dat_sel[,c(1:10)],as.data.frame(scale(dat_sel[,-c(1,2,3,4,5,6,7,8,9,10)])))# scale the data to enable comparing the coefs
+dat_scale_sf = st_as_sf(dat_scale, coords = c("lon", "lat"), crs = 4326)
+library(spatialreg)
+
+# linear model without spatial correlation structure
+fit_1_lm <- lm(R80P ~ TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  + SOC_000_015  + Dist_N +  Pseas + CWD + MAP + impact + Vpre  , data =dat_scale)
+summary(fit_1_lm)
+
+plot(fit_1_lm)# check the model fit 
+par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
+plot(fit_1_lm, which = 1:4)
+
+png(file.path(ifolder, 'LM_diag_R80p.png'), width = 1400, height = 1100)
+par(mfrow = c(2, 2), oma = c(0,5, 3, 0),mar=c(5,6,4,2) + 0.1)
+plot(fit_1_lm, id.n = 5, labels.id = NULL, cex.axis = 3, cex.lab =3)  # 5 id numbers non-lin | normal distr | variance | outliers
+dev.off()
+
+png(file.path(ifolder, 'LM_fit_R80p.png'), width = 1400, height = 1100)
+sqplot(dat_sel$R80P,fitted(fit_1_lm),xlab = 'R80P', ylab = 'Fitted', cex = 2, cex.axis = 3, cex.lab =3)# true vs fitted
+dev.off()
 
 
-# coords <- as.matrix(cbind(long, $lat)) 
-# coord.nb <- dnearneigh(coords, 0, 10000 longlat=TRUE) 
-# coord.list <- nb2listw(coord.nb, style="W") 
-# lianasp.lm <- lm(lianasprich ~ log(averdist) + dsl + lianadens +wooddens)
-# lm.morantest(lianasp.lm, coord.list, alternative="two.sided")
+# spatial simultaneous autoregressive lag model 
+fit_2_lag <- lagsarlm(R80P ~ TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  + SOC_000_015  + Dist_N +  Pseas + CWD + MAP + impact + Vpre , data = dat_scale_sf, yourcn)
+summary(fit_2_lag)
 
-# total_val$sResR80P1 <- scale(lms_R80P)[,1]
-# total_val_sf = st_as_sf(total_val, coords = c("lon", "lat"), crs = 4326)
-# total_val_sp <- as(total_val_sf, "Spatial")
-#Then we create a list of neighbours using the Queen criteria
-# w <- poly2nb(total_val_sp, row.names=total_val_sp$id)
+impacts(fit_2_lag, listw=yourcn)
 
-# R80P_sp <- as(lm_R80P, "Spatial")
-#Then we create a list of neighbours using the Queen criteria
-# w <- poly2nb(ncovr_sp, row.names=ncovr_sp$FIPSNO)
+# patial simultaneous autoregressive error model
+fit_3_err <- errorsarlm(R80P ~ TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  + SOC_000_015  + Dist_N +  Pseas + CWD + MAP + impact + Vpre, data = dat_scale_sf, yourcn)
+summary(fit_3_err)
+```
+
+```{r YrYr}
+lm_YrYrTC1 <- lm(YrYr ~ TCmean500, data = total_val)
+lm_YrYrTC2 <- lm(YrYr ~ TCmean1000, data = total_val)
+lm_YrYrTC3 <- lm(YrYr ~ TCmean5000, data = total_val)
+AIC(lm_YrYrTC1, lm_YrYrTC2, lm_YrYrTC3)
+
+# Select the most optimal soil depth
+lm_YrYrN1 <- lm(YrYr ~ Nitro_000_005, data = total_val)
+lm_YrYrN2 <- lm(YrYr ~ Nitro_000_015, data = total_val)
+lm_YrYrN3 <- lm(YrYr ~ Nitro_005_015, data = total_val)
+lm_YrYrN4 <- lm(YrYr ~ Nitro_015_030, data = total_val)
+lm_YrYrN5 <- lm(YrYr ~ Nitro_000_030, data = total_val)
+AIC(lm_YrYrN1, lm_YrYrN2, lm_YrYrN3,lm_YrYrN4,lm_YrYrN5)
+
+# generate a linear model without any spatial correlation structure
+dat_sel <- total_val
+lm_YrYrtot <- lm(YrYr ~ TCmean500 + Dist_N + Elev + Slope  + Nitro_000_015  + CEC_000_015  + SOC_000_015   +  Pseas + CWD + MAP + impact + Vpre , data = dat_sel)
+lm_YrYr <- step(lm_YrYrtot, direction = 'backward')# backward selection of relevant variables
+lms_YrYr <- arm::standardize(lm_YrYr)# scale coef of covariates to enhance comparison
+summary(lms_YrYr)# 
+plot(lms_YrYr)# check the model fit 
+plot(dat_sel$YrYr,fitted(lms_YrYr))
+abline(0,1, col = 'red')
+# total_val$resR80P1 <- residuals(lms_R80P)
+# total_val$fitR80P1 <- fitted(lms_R80P)
+library(faraway)
+vif(lms_YrYr)# vif greater than 5 is considered problematic
+
+library(adegenet)
+library(spdep)
+
+# check if the residuals have a significant spatial correlation structure
+xy <- t(as.matrix(rbind(total_val$lon,total_val$lat)))#matrix(runif(100),ncol=2)
+yourcn <- chooseCN(xy, type = 6, result.type = "listw")# 3 neighbors
+# yourcn <- chooseCN(xy, type = 7, a = 1, dmin = 0.0001, result.type = "listw")
+mortst <- lm.morantest(lms_YrYr, yourcn, alternative="two.sided")
+
+# run lagrange multiplier test to know which spatial model suits the data
+lagtst <- lm.LMtests(lms_YrYr, yourcn, test = c("LMerr","LMlag","RLMerr","RLMlag"))#,"SARMA"
+library(sf)
+dat_scale <- cbind(dat_sel[,c(1:10)],as.data.frame(scale(dat_sel[,-c(1,2,3,4,5,6,7,8,9,10)])))# scale the data to enable comparing the coefs
+dat_scale_sf = st_as_sf(dat_scale, coords = c("lon", "lat"), crs = 4326)
+library(spatialreg)
+
+# linear model without spatial correlation structure
+fit_YrYr_1_lm <- lm(YrYr ~ TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  + SOC_000_015  + Dist_N +  Pseas + CWD + MAP + impact + Vpre  , data =dat_scale)
+summary(fit_YrYr_1_lm)
+
+plot(fit_YrYr_1_lm)# check the model fit 
+par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
+plot(fit_YrYr_1_lm, which = 1:4)
+
+png(file.path(ifolder, 'LM_diag_YrYr.png'), width = 1400, height = 1100)
+par(mfrow = c(2, 2), oma = c(0,5, 3, 0),mar=c(5,6,4,2) + 0.1)
+plot(fit_YrYr_1_lm, id.n = 5, labels.id = NULL, cex.axis = 3, cex.lab =3)  # 5 id numbers non-lin | normal distr | variance | outliers
+dev.off()
+
+png(file.path(ifolder, 'LM_fit_YrYr.png'), width = 1400, height = 1100)
+sqplot(dat_sel$YrYr,fitted(fit_YrYr_1_lm),xlab = 'YrYr', ylab = 'Fitted', cex = 2, cex.axis = 3, cex.lab =3)# true vs fitted
+dev.off()
+
+
+# spatial simultaneous autoregressive lag model 
+fit_YrYr_2_lag <- lagsarlm(YrYr ~ TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  + SOC_000_015  + Dist_N +  Pseas + CWD + MAP + impact + Vpre , data = dat_scale_sf, yourcn)
+summary(fit_YrYr_2_lag)
+
+impacts(fit_2_lag, listw=yourcn)
+
+# patial simultaneous autoregressive error model
+fit_YrYr_3_err <- errorsarlm(YrYr ~ TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  + SOC_000_015  + Dist_N +  Pseas + CWD + MAP + impact + Vpre, data = dat_scale_sf, yourcn)
+summary(fit_YrYr_3_err)
+```
+
+```{r RRI}
+lm_RRItot <- lm(RRI ~ TCmean500 + Dist_N + Elev + Slope  + Nitro_000_015  + CEC_000_015  + SOC_000_015   +  Pseas + CWD + MAP + impact + Vpre , data =dat_sel)
+lm_RRI <- step(lm_RRItot, direction = 'backward')# backward selection of relevant variables
+lms_RRI <- arm::standardize(lm_RRI)# scale coef of covariates to enhance comparison
+summary(lms_RRI)# 
+plot(lms_RRI)# check the model fit 
+plot(dat_sel$RRI,fitted(lms_RRI))
+abline(0,1, col = 'red')
+total_val$resRRI<- residuals(lms_RRI)
+total_val$fitRRI <- fitted(lms_RRI)
+library(faraway)
+vif(lms_RRI)# vif greater than 5 is considered problematic
+
+library(adegenet)
+library(spdep)
+
+# check if the residuals have a significant spatial correlation structure
+xy <- t(as.matrix(rbind(total_val$lon,total_val$lat)))#matrix(runif(100),ncol=2)
+yourcn <- chooseCN(xy, type = 6, result.type = "listw")# 3 neighbors
+# yourcn <- chooseCN(xy, type = 7, a = 1, dmin = 0.0001, result.type = "listw")
+mortst <- lm.morantest(lms_RRI, yourcn, alternative="two.sided")
+
+# run lagrange multiplier test to know which spatial model suits the data
+lagtst <- lm.LMtests(lms_RRI, yourcn, test = c("LMerr","LMlag","RLMerr","RLMlag"))#,"SARMA"
+library(sf)
+dat_scale <- cbind(dat_sel[,c(1:10)],as.data.frame(scale(dat_sel[,-c(1,2,3,4,5,6,7,8,9,10)])))# scale the data to enable comparing the coefs
+dat_scale_sf = st_as_sf(dat_scale, coords = c("lon", "lat"), crs = 4326)
+library(spatialreg)
+
+# linear model without spatial correlation structure
+fit_RRI_1_lm <- lm(RRI ~ TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  +  Dist_N +  Pseas +  MAP + impact + Vpre  , data =dat_scale)
+summary(fit_RRI_1_lm)
+
+plot(fit_RRI_1_lm)# check the model fit 
+par(mfrow = c(2, 2), oma = c(0, 0, 2, 0))
+plot(fit_RRI_1_lm, which = 1:4)
+
+png(file.path(ifolder, 'LM_diag_R80p.png'), width = 1400, height = 1100)
+par(mfrow = c(2, 2), oma = c(0,5, 3, 0),mar=c(5,6,4,2) + 0.1)
+plot(fit_1_lm, id.n = 5, labels.id = NULL, cex.axis = 3, cex.lab =3)  # 5 id numbers non-lin | normal distr | variance | outliers
+dev.off()
+
+png(file.path(ifolder, 'LM_fit_R80p.png'), width = 1400, height = 1100)
+sqplot(dat_sel$R80P,fitted(fit_1_lm),xlab = 'R80P', ylab = 'Fitted', cex = 2, cex.axis = 3, cex.lab =3)# true vs fitted
+dev.off()
+
+
+# spatial simultaneous autoregressive lag model 
+fit_RRI_2_lag <- lagsarlm(RRI ~ TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  +  Dist_N +  Pseas +  MAP + impact + Vpre , data = dat_scale_sf, yourcn)
+summary(fit_YrYr_2_lag)
+
+impacts(fit_2_lag, listw=yourcn)
+
+# patial simultaneous autoregressive error model
+fit_RRI_3_err <- errorsarlm(RRI ~TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  +  Dist_N +  Pseas +  MAP + impact + Vpre, data = dat_scale_sf, yourcn)
+summary(fit_RRI_3_err)
+
+```
+```{r spat_blocks}
+# generate spatial folds to train the model
+library(blockCV)
+df_sf <- total_val
+coordinates(df_sf) <- ~lon+lat
+proj4string(df_sf) <- CRS("+init=epsg:4326")
+
+df_sf <- st_as_sf(df_sf,coords = c('lon','lat'))
+
+# https://github.com/rvalavi/blockCV/issues/2
+# correlogram - look for distance where spatial correlation drops to zero
+coP <- ncf::correlog(total_val$lon, total_val$lat,total_val$MAP, increment = 1, resamp = 0, latlon = T, na.rm=TRUE)
+coNitro <- ncf::correlog(total_val$lon, total_val$lat,total_val$Nitro_000_015, increment = 1, resamp = 0, latlon = T, na.rm=TRUE)
+
+# plot(co1$mean.of.class, co1$correlation, type='b', cex=0.5, ylab='correlation', xlab='distance class')
+# abline(h=0, lty=3)
+# abline(v=co1$x.intercept, lty=3)
+
+# the dotted vertical line shows where spatial autocorrelation = 0.
+zeroSA <- coP$x.intercept #in kilometers
+zeroSANitro <- coNitro$x.intercept #in kilometers
+
+folds <- spatialBlock(df_sf, rasterLayer=MAP, theRange=zeroSA*1000, k=10, biomod2Format=F)
 
 ```
 
+
+```{r brt}
+library(gbm)
+library(dismo)
+library(caret)
+
+# train brt model over a range of hyperparameters using 10 fold cross validation
+grid<-expand.grid(.n.trees=seq(500,1500,by=500),.interaction.depth=seq(1,5,by=4),.shrinkage=c(.001,.01,.1), bag.fraction = c(0.5,0.75), .n.minobsinnode=10)
+
+# fold 1
+dev_mod <- matrix(nrow = 10, ncol = dim(grid)[1])
+rsq_mod <- matrix(nrow = 10, ncol = dim(grid)[1])
+
+for (i in 1:length(folds[[1]])){
+  dat_train1 <- total_val[folds[[1]][[i]][[1]],]
+  dat_val1 <- total_val[folds[[1]][[i]][[2]],]
+for (ii in 1:dim(grid)[1]){
+  mod_f1 <- gbm.fixed(dat_train1,gbm.x = c('TCmean500', 'Slope','Nitro_000_015','CEC_000_015', 'Dist_N','Pseas','MAP','impact','Vpre'), gbm.y = 'YrYr',tree.complexity=grid$.interaction.depth[ii], learning.rate=grid$.shrinkage[ii], bag.fraction = grid$bag.fraction[ii], n.trees = grid$.n.trees[ii], family ='gaussian')
+  pred <- predict.gbm(mod_f1, dat_val1, n.trees=grid$.n.trees[ii], "response")
+  dev_mod[i,ii] <- calc.deviance(dat_val1$YrYr,pred, calc.mean=TRUE)
+  rsq_mod[i,ii] <- cor(dat_val1$YrYr,pred)^2
+}
+rm(dat_train1, dat_val1)
+}
+
+best_mod <- which(colMeans(dev_mod, na.rm = T) == min(colMeans(dev_mod, na.rm = T), na.rm = T))
+
+# apply final brt model over entire dataset
+mod_brt <- gbm.fixed(total_val,gbm.x = c('TCmean500', 'Slope','Nitro_000_015','CEC_000_015', 'Dist_N','Pseas','MAP','impact','Vpre'), gbm.y = 'YrYr',tree.complexity=grid$.interaction.depth[best_mod], learning.rate=grid$.shrinkage[best_mod], bag.fraction = grid$bag.fraction[best_mod], n.trees = grid$.n.trees[best_mod], family ='gaussian')
+
+# assess variable importance 
+summary(mod_brt)
+
+# plot marginal effects
+gbm.plot(mod_brt,n.plots=9, plot.layout=c(3, 3), write.title = FALSE)
+
+# evaluate interaction effects
+
+
+
+
+
+
+
+# tst <- gbm.step(data = total_val, gbm.x = c('TCmean500', 'Slope','Nitro_000_015','CEC_000_015', 'Dist_N','Pseas','MAP','impact','Vpre'), gbm.y = 'YrYr',  tree.complexity = 5,learning.rate = 0.005, bag.fraction = 0.5, family ='gaussian' )
+
+grid<-expand.grid(.n.trees=seq(1000,6000,by=1000),.interaction.depth=seq(1,5,by=4),.shrinkage=c(.001,.1), .n.minobsinnode=10)
+                 
+# control<-trainControl(method = "CV", number = 3)
+control <- trainControl(## 10-fold CV
+                           method = "repeatedcv",
+                           number = 10,
+                           ## repeated ten times
+                           repeats = 10)
+gbm.train<-train(YrYr ~ TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  +  Dist_N +  Pseas +  MAP + impact + Vpre,data=total_val,method='gbm',trControl=control,tuneGrid=grid, bag.fraction = 0.5, distribution = 'gaussian')
+gbm.model <- gbm(YrYr ~ TCmean500 + Slope  + Nitro_000_015  + CEC_000_015  +  Dist_N +  Pseas +  MAP + impact + Vpre,data=total_val, n.trees = 1000, interaction.depth = 5, shrinkage = 0.1, n.minobsinnode = 10, bag.fraction = 0.5, distribution = 'gaussian')
+
+gbm_mod <- gbm.step(data = total_val, gbm.x = c('TCmean500', 'Slope','Nitro_000_015','CEC_000_015', 'Dist_N','Pseas','MAP','impact','Vpre'), gbm.y = 'YrYr',  tree.complexity = 5,learning.rate = 0.1, bag.fraction = 0.5, family ='gaussian' )
+
+summary(gbm_mod)
+
+gbm.plot(gbm_mod,n.plots=9, plot.layout=c(3, 3), write.title = FALSE)
+gbm.plot.fits(gbm_mod)
+find.int <- gbm.interactions(gbm_mod)
+find.int$interactions
+find.int$rank.list
+
+
+
+plot(gbm.model, i.var = 2)
+gbm_int <- interact.gbm(gbm.model, data = total_val, i.var = c('impact','Vpre'))
+gbm_int <- interact.gbm(gbm.model, data = total_val, i.var = c('impact','MAP'))
+gbm_int <- interact.gbm(gbm.model, data = total_val, i.var = c('MAP','Vpre'))
+gbm_int <- interact.gbm(gbm.model, data = total_val, i.var = c('impact','Nitro_000_015'))
+gbm_int <- interact.gbm(gbm.model, data = total_val, i.var = c('Vpre','Nitro_000_015'))
+gbm_int <- interact.gbm(gbm.model, data = total_val, i.var = c('impact','TCmean500'))
+gbm.perspec(gbm.model, 9, 7, y.range=c(15,20), z.range=c(0,0.6))
+#'TCmean500','Slope',,'CEC_000_015', 'Dist_N','Pseas','TCmean500', 'Nitro_000_015','MAP',
+# gbm.price<-gbm(price~.,data=train,n.trees = 300,interaction.depth = 1,
+              # shrinkage = .1,distribution = 'gaussian')
+```
+
 ```{r gam}
-library(mgcv)
-
-mod_R80P <- gam(R80P ~ s(TCmean1000, bs = 'ps') +  s(Elev, bs = 'ps', k=80) +  s(Slope, bs = 'ps', k=80)  +  s(SOC_000_005, bs = 'ps', k=200) +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
-
-mod_R80P1 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Elev, bs = 'ps')  + s(CWD, bs = 'ps')  + s(SOC_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_N, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
-
-mod_R80P2 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(SOC_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_N, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
-
-mod_R80P3a <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Nitro_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) , data = total_val, method = 'REML', select = 'TRUE')
-
-
-
-kval = 45
-mod_R80P3b <- gam(R80P ~ s(TCmean1000,k=kval)   +  s(Slope ,k=kval)  +  s(CWD,k=kval)  + s(Nitro_000_015,k=kval)  , data = total_val, method = 'REML', select = 'TRUE')# , bs='gp', k=200, m=2 + s(CWD, bs = 'ps',k=kval) + + s(MAP, bs = 'ps',k=kval) + s(Pseas, bs = 'ps',k=kval) , bs = 'ps'
-
-summary(mod_R80P3b)
-plot(mod_R80P3b)
-gam.check(mod_R80P3b, k.rep = 1000)
-concurvity(mod_R80P3b)# worst larger than 0.8 needs closer inspection (full=T) -> removal of variables that cause problems
-shapiro.test(residuals(mod_R80P3b, type = 'response'))
-plot(mod_R80P3b, seWithMean = TRUE, shift = coef(mod_R80P3b)[1], residuals = TRUE,
-     pch = 1, cex = 1, shade=T)
-
-
-mod_R80P3c <- gam(R80P ~ s(TCmean1000, bs = 'ps') + s(Dist_N, bs = 'ps') +   s(Slope, bs = 'ps')  +  s(MAP, bs = 'ps')  + s(Nitro_000_015, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
-
-mod_R80P4 <- gam(R80P ~    s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Nitro_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_N, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
-
-# mod_R80P4 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Clay_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
-
-mod_R80P5 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Silt_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
-
-# mod_R80P6 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(CEC_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
-
-summary(mod_R80P)
-plot(mod_R80P)
-gam.check(mod_R80P, k.rep = 1000)
-concurvity(mod_R80P)
-shapiro.test(residuals(mod_R80P, type = 'response'))
-
-mod_YrYr <- gam(YrYr ~ s(TCmean500, bs = 'ps') +  s(Elev, bs = 'ps') +  s(Slope, bs = 'ps') +  s(Aspect, bs = 'ps') + s(CEC_000_005, bs = 'ps') + s(lon, lat, bs='gp', k=200, m=2), data = total_val, method = 'REML', select = 'TRUE')
-summary(mod_YrYr)
-plot(mod_YrYr)
-gam.check(mod_YrYr, k.rep = 1000)
-concurvity(mod_YrYr)
-
-# IV <- create_infotables(data=total_val, y="RRI", ncore=2)
-map_data('RRI') %>%
-  plot_geo(x = ~total_val$lon, y = ~total_val$lat) %>%
-  add_markers(color=~RRI,
-              colors=pal,
-              opacity=.66,
-              data=as_tibble(total_val))
+# library(mgcv)
+# 
+# mod_R80P <- gam(R80P ~ s(TCmean1000, bs = 'ps') +  s(Elev, bs = 'ps', k=80) +  s(Slope, bs = 'ps', k=80)  +  s(SOC_000_005, bs = 'ps', k=200) +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+# 
+# mod_R80P1 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Elev, bs = 'ps')  + s(CWD, bs = 'ps')  + s(SOC_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_N, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+# 
+# mod_R80P2 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(SOC_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_N, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+# 
+# mod_R80P3a <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Nitro_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) , data = total_val, method = 'REML', select = 'TRUE')
+# 
+# kval = 45
+# mod_R80P3b <- gam(R80P ~ s(TCmean1000,k=kval)   +  s(Slope ,k=kval)  +  s(CWD,k=kval)  + s(Nitro_000_015,k=kval)  , data = total_val, method = 'REML', select = 'TRUE')# , bs='gp', k=200, m=2 + s(CWD, bs = 'ps',k=kval) + + s(MAP, bs = 'ps',k=kval) + s(Pseas, bs = 'ps',k=kval) , bs = 'ps'
+# 
+# summary(mod_R80P3b)
+# plot(mod_R80P3b)
+# gam.check(mod_R80P3b, k.rep = 1000)
+# concurvity(mod_R80P3b)# worst larger than 0.8 needs closer inspection (full=T) -> removal of variables that cause problems
+# shapiro.test(residuals(mod_R80P3b, type = 'response'))
+# plot(mod_R80P3b, seWithMean = TRUE, shift = coef(mod_R80P3b)[1], residuals = TRUE,
+#      pch = 1, cex = 1, shade=T)
+# 
+# 
+# mod_R80P3c <- gam(R80P ~ s(TCmean1000, bs = 'ps') + s(Dist_N, bs = 'ps') +   s(Slope, bs = 'ps')  +  s(MAP, bs = 'ps')  + s(Nitro_000_015, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+# 
+# mod_R80P4 <- gam(R80P ~    s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Nitro_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_N, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+# 
+# # mod_R80P4 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Clay_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+# 
+# mod_R80P5 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(Silt_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+# 
+# # mod_R80P6 <- gam(R80P ~ s(TCmean1000, bs = 'ps') +   s(Slope, bs = 'ps')  + s(CWD, bs = 'ps')  + s(CEC_000_015, bs = 'ps') +  s(lon, lat, bs='gp', k=200, m=2) + s(Dist_W, bs = 'ps'), data = total_val, method = 'REML', select = 'TRUE')
+# 
+# summary(mod_R80P)
+# plot(mod_R80P)
+# gam.check(mod_R80P, k.rep = 1000)
+# concurvity(mod_R80P)
+# shapiro.test(residuals(mod_R80P, type = 'response'))
+# 
+# mod_YrYr <- gam(YrYr ~ s(TCmean500, bs = 'ps') +  s(Elev, bs = 'ps') +  s(Slope, bs = 'ps') +  s(Aspect, bs = 'ps') + s(CEC_000_005, bs = 'ps') + s(lon, lat, bs='gp', k=200, m=2), data = total_val, method = 'REML', select = 'TRUE')
+# summary(mod_YrYr)
+# plot(mod_YrYr)
+# gam.check(mod_YrYr, k.rep = 1000)
+# concurvity(mod_YrYr)
+# 
+# # IV <- create_infotables(data=total_val, y="RRI", ncore=2)
+# map_data('RRI') %>%
+#   plot_geo(x = ~total_val$lon, y = ~total_val$lat) %>%
+#   add_markers(color=~RRI,
+#               colors=pal,
+#               opacity=.66,
+#               data=as_tibble(total_val))
 ```

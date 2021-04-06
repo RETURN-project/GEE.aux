@@ -8,6 +8,9 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(GEE.aux)
+library(stringr)
+library(tidyverse)
+library(readr)
 ```
 
 # User inputs
@@ -17,125 +20,127 @@ ifolder <- './inst/testdata/'
 # path to folder where outputs should be stored
 ofolder <- './inst/testdata/'
 # name of data files
-# ifile <- 'samples_forest_fire_nat_n1000_COVAR_0_2000.csv'
+ifile <- 'samples_forest_fire_nat_n1000_VAL_'
+startPix <- 0 # first time series of the first input file to be processed
+endPix <- 40000# first time series of the last input file to be processed
+intPix <- 2000# number of time series per input file
+startdt <- '1994-12-31'# start date of climate inputs 
+# column names of the data downloaded via GEE
+  col_names <- c("id","ecoReg","coords","CEC","Nitro","SOC","Silt","Clay","CWD","Elev","Slope","Aspect","TCmean500","TCmean1000","TCmean5000","TCsd500","TCsd1000","TCsd5000", "pop500","pop1000","pop5000","pop10000","distRoads","distSelRoads")
+ 
+```
 
+# load data
+```{r load}
+# Load climate data
+# Here, it is assumed that CRU climate datasets are downloaded and available in the input folder
+# CRU data can be obtained here: https://data.ceda.ac.uk/badc/cru/data/cru_ts/cru_ts_4.04/data
+prec <- brick(file.path(ifolder, "cru_ts4.04.1901.2019.pre.dat.nc"), varname="pre")
+tmin <- brick(file.path(ifolder, "cru_ts4.04.1901.2019.tmn.dat.nc"), varname="tmn")
+tmax <- brick(file.path(ifolder, "cru_ts4.04.1901.2019.tmx.dat.nc"), varname="tmx")
 ```
 
 # Read data into tidy data frame
 ```{r tidy_data}
-  # column names of the data 
-  col_names <- c("id","ecoReg","coords","CEC","Nitro","SOC","Silt","Clay","CWD","Elev","Slope","Aspect","TCmean500","TCmean1000","TCmean5000","TCsd500","TCsd1000","TCsd5000", "Dist_W","dist_N")
-  # generate a dataframe from the input data 
+# generate a dataframe from the input data 
+for (i in seq(startPix,endPix,by =intPix)){
+  if(i == endPix){endpnt = 'None'}else{endpnt = i+intPix}
+  # read the input file
+  x <- readLines(file.path(ifolder,paste0(ifile,i,'_',endpnt,'.csv')))
+  # generate a dataframe
+  dat_tidy <- tidy_covarData(x,col_names)
+  # seperate soil data in columns per depth
+  dat_tidy <- dat_tidy%>%
+    separate(CEC,into=paste0('CEC_',c('000_005','005_015','015_030','030_060','060_100','100_200')),sep=", ",convert=TRUE) %>% 
+    separate(Nitro,into=paste0('Nitro_',c('000_005','005_015','015_030','030_060','060_100','100_200')),sep=", ",convert=TRUE)%>% 
+    separate(SOC,into=paste0('SOC_',c('000_005','005_015','015_030','030_060','060_100','100_200')),sep=", ",convert=TRUE)%>% 
+    separate(Silt,into=paste0('Silt_',c('000_005','005_015','015_030','030_060','060_100','100_200')),sep=", ",convert=TRUE)%>% 
+    separate(Clay,into=paste0('Clay_',c('000_005','005_015','015_030','030_060','060_100','100_200')),sep=", ",convert=TRUE)
   
-library(stringr)
-library(tidyverse)
-library(readr)
-  tidy_covarData <- function(x, col_names){
-  # a <- str_split(tools::file_path_sans_ext(file),"_")%>%unlist
-  # remove the '[' at the beginning and end of the file
-  y <-  substr(x,2,str_length(x)-1)
-  # replace the "]" by "["
-  z <- gsub( "]", "[", y )
-  # z <- z[-1]
-  # write to temporary file
-  tmpf <- tempfile()
-  cat(z, file=tmpf, sep="\n")
-
-  # load data again, to get rid of the "[" seperator and assign column names
-  dat_orig <- readr::read_csv(tmpf, quote="[",
-                       col_names=col_names)
-  return(dat_orig)
+  # write the dataframe to a csv and Rdata file
+  write_csv(dat_tidy, file.path(ofolder, paste0('tidy_',ifile)))
+  save(dat_tidy, file = file.path(ofolder, paste0('tidy_', tools::file_path_sans_ext(ifile), '.Rdata')))
+  # merge dataframes of separate input files 
+  if(i==0){df_covar <- dat_tidy}else{df_covar <- rbind(df_covar, dat_tidy)}
+  rm(dat_tidy)
 }
-
-  
-  for (i in seq(0,32000,by =2000)){
-    if(i == 40000){endpnt = 'None'}else{endpnt = i+2000}
-    # get full path of the input file
-    ifile <- paste0('samples_forest_fire_nat_n1000_VAL_',i,'_',endpnt,'.csv')
-    pth <- file.path(ifolder,ifile)
-    # read the input file
-    x <- readLines(pth)
-    
-    dat_tidy <- tidy_covarData(x,col_names)
-    dat_tidy <- dat_tidy%>%
-      separate(CEC,into=paste0('CEC_',c('000_005','005_015','015_030','030_060','060_100','100_200')),sep=", ",convert=TRUE) %>% 
-      separate(Nitro,into=paste0('Nitro_',c('000_005','005_015','015_030','030_060','060_100','100_200')),sep=", ",convert=TRUE)%>% 
-      separate(SOC,into=paste0('SOC_',c('000_005','005_015','015_030','030_060','060_100','100_200')),sep=", ",convert=TRUE)%>% 
-      separate(Silt,into=paste0('Silt_',c('000_005','005_015','015_030','030_060','060_100','100_200')),sep=", ",convert=TRUE)%>% 
-      separate(Clay,into=paste0('Clay_',c('000_005','005_015','015_030','030_060','060_100','100_200')),sep=", ",convert=TRUE)
-    
-    # write the dataframe to a csv file
-    write_csv(dat_tidy, file.path(ofolder, paste0('tidy_',ifile)))
-    save(dat_tidy, file = file.path(ofolder, paste0('tidy_', tools::file_path_sans_ext(ifile), '.Rdata')))
-    if(i==0){df_covar <- dat_tidy}else{df_covar <- rbind(df_covar, dat_tidy)}
-    rm(dat_tidy)
-  }
+# separate coordinate values into individual columns
 df_covar <- df_covar %>%
-      separate(coords,into=c('lon','lat'),sep=", ",convert=TRUE)
+  separate(coords,into=c('lon','lat'),sep=", ",convert=TRUE)
+# save the dataframe of covariates, as downloaded by GEE
 save(df_covar, file = file.path(ofolder, 'df_covar_tot.Rdata'))
     
 ```
 
+# extract climate information
 ```{r clim}
-prec <- brick(file.path(ifolder, "cru_ts4.04.1901.2019.pre.dat.nc"), varname="pre")
-prec_yrs <- as.Date(names(prec),'X%Y.%m.%d')
-prec <- prec[[which(prec_yrs> as.Date('1994-12-31'))]]
-prec_yrs <- prec_yrs[which(prec_yrs> as.Date('1994-12-31'))]
-indices <- as.numeric(format(prec_yrs, format = "%m"))
-month_prec<- stackApply(prec, indices, fun = mean)# calculate mean montlhy precipitation
-names(month_prec) <- month.abb
+# generate monthly mean climate variables (using only data after pre-defined start date)
+month_prec <- getMonthlyMeanClim(prec, startdt)
+month_tmin <- getMonthlyMeanClim(tmin, startdt)
+month_tmax <- getMonthlyMeanClim(tmax, startdt)
 
-tmin <- brick(file.path(ifolder, "cru_ts4.04.1901.2019.tmn.dat.nc"), varname="tmn")
-tmin_yrs <- as.Date(names(tmin),'X%Y.%m.%d')
-tmin <- tmin[[which(tmin_yrs> as.Date('1994-12-31'))]]
-tmin_yrs <- tmin_yrs[which(tmin_yrs> as.Date('1994-12-31'))]
-indices <- as.numeric(format(tmin_yrs, format = "%m"))
-month_tmin<- stackApply(tmin, indices, fun = mean)# calculate mean montlhy precipitation
-names(month_tmin) <- month.abb
-
-tmax <- brick(file.path(ifolder, "cru_ts4.04.1901.2019.tmx.dat.nc"), varname="tmx")
-tmax_yrs <- as.Date(names(tmax),'X%Y.%m.%d')
-tmax <- tmax[[which(tmax_yrs> as.Date('1994-12-31'))]]
-tmax_yrs <- tmax_yrs[which(tmax_yrs> as.Date('1994-12-31'))]
-indices <- as.numeric(format(tmax_yrs, format = "%m"))
-month_tmax<- stackApply(tmax, indices, fun = mean)# calculate mean montlhy precipitation
-names(month_tmax) <- month.abb
-
+# Derive bioclimatic variables:
+# BIO1 = Annual Mean Temperature
+# BIO2 = Mean Diurnal Range (Mean of monthly (max temp - min temp))
+# BIO3 = Isothermality (BIO2/BIO7) (×100)
+# BIO4 = Temperature Seasonality (standard deviation ×100)
+# BIO5 = Max Temperature of Warmest Month
+# BIO6 = Min Temperature of Coldest Month
+# BIO7 = Temperature Annual Range (BIO5-BIO6)
+# BIO8 = Mean Temperature of Wettest Quarter
+# BIO9 = Mean Temperature of Driest Quarter
+# BIO10 = Mean Temperature of Warmest Quarter
+# BIO11 = Mean Temperature of Coldest Quarter
+# BIO12 = Annual Precipitation
+# BIO13 = Precipitation of Wettest Month
+# BIO14 = Precipitation of Driest Month
+# BIO15 = Precipitation Seasonality (Coefficient of Variation)
+# BIO16 = Precipitation of Wettest Quarter
+# BIO17 = Precipitation of Driest Quarter
+# BIO18 = Precipitation of Warmest Quarter
+# BIO19 = Precipitation of Coldest Quarter
 bioclim_vars <- biovars(month_prec, month_tmin, month_tmax)
-    # BIO1 = Annual Mean Temperature
-    # BIO2 = Mean Diurnal Range (Mean of monthly (max temp - min temp))
-    # BIO3 = Isothermality (BIO2/BIO7) (×100)
-    # BIO4 = Temperature Seasonality (standard deviation ×100)
-    # BIO5 = Max Temperature of Warmest Month
-    # BIO6 = Min Temperature of Coldest Month
-    # BIO7 = Temperature Annual Range (BIO5-BIO6)
-    # BIO8 = Mean Temperature of Wettest Quarter
-    # BIO9 = Mean Temperature of Driest Quarter
-    # BIO10 = Mean Temperature of Warmest Quarter
-    # BIO11 = Mean Temperature of Coldest Quarter
-    # BIO12 = Annual Precipitation
-    # BIO13 = Precipitation of Wettest Month
-    # BIO14 = Precipitation of Driest Month
-    # BIO15 = Precipitation Seasonality (Coefficient of Variation)
-    # BIO16 = Precipitation of Wettest Quarter
-    # BIO17 = Precipitation of Driest Quarter
-    # BIO18 = Precipitation of Warmest Quarter
-    # BIO19 = Precipitation of Coldest Quarter
-
 MAT <- bioclim_vars[[1]]# annual mean temperature
 MAP <- bioclim_vars[[12]]#Annual Precipitation
 Pseas <- bioclim_vars[[15]]#Precipitation Seasonality (Coefficient of Variation)
+# save bioclimatic variables
 save(MAT, file = file.path(ifolder, "MAT"))
 save(MAP, file = file.path(ifolder, "MAP"))
 save(Pseas, file = file.path(ifolder, "Pseas"))
 
+# extract values of bioclimatic variables over points of interest
 p_mat <- raster::extract(x=MAT,y=cbind(df_covar$lon, df_covar$lat))
 p_map <- raster::extract(x=MAP,y=cbind(df_covar$lon, df_covar$lat))
 p_Pseas <- raster::extract(x=Pseas,y=cbind(df_covar$lon, df_covar$lat))
 
+# add the bioclimatic variables to the dataframe of covariates
 df_covar$MAT <- p_mat
 df_covar$MAP <- p_map
 df_covar$Pseas <- p_Pseas
 save(df_covar, file = file.path(ofolder, 'df_covar_tot.Rdata'))
+```
 
+```{r}
+# prec_yrs <- as.Date(names(prec),'X%Y.%m.%d')
+# prec <- prec[[which(prec_yrs> as.Date(startdt))]]
+# prec_yrs <- prec_yrs[which(prec_yrs> as.Date(startdt))]
+# indices <- as.numeric(format(prec_yrs, format = "%m"))
+# month_prec<- stackApply(prec, indices, fun = mean)# calculate mean montlhy precipitation
+# names(month_prec) <- month.abb
+# 
+# tmin <- brick(file.path(ifolder, "cru_ts4.04.1901.2019.tmn.dat.nc"), varname="tmn")
+# tmin_yrs <- as.Date(names(tmin),'X%Y.%m.%d')
+# tmin <- tmin[[which(tmin_yrs> as.Date(startdt))]]
+# tmin_yrs <- tmin_yrs[which(tmin_yrs> as.Date(startdt))]
+# indices <- as.numeric(format(tmin_yrs, format = "%m"))
+# month_tmin<- stackApply(tmin, indices, fun = mean)# calculate mean montlhy minimum temperature
+# names(month_tmin) <- month.abb
+# 
+# tmax <- brick(file.path(ifolder, "cru_ts4.04.1901.2019.tmx.dat.nc"), varname="tmx")
+# tmax_yrs <- as.Date(names(tmax),'X%Y.%m.%d')
+# tmax <- tmax[[which(tmax_yrs> as.Date(startdt))]]
+# tmax_yrs <- tmax_yrs[which(tmax_yrs> as.Date(startdt))]
+# indices <- as.numeric(format(tmax_yrs, format = "%m"))
+# month_tmax<- stackApply(tmax, indices, fun = mean)# calculate mean montlhy maximum temperature
+# names(month_tmax) <- month.abb
 ```

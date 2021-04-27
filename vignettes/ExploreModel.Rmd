@@ -1,0 +1,84 @@
+---
+title: "GAM model"
+author: "Wanda De Keersmaecker"
+date: "3/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## User inputs
+
+```{r inputs}
+# path to folder with data
+ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/testdata/'#'./inst/testdata/'
+# path to folder where outputs should be stored
+ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/testdata/'#'./inst/testdata/'
+# name of data files
+
+
+sqplot <- function(x,y,lwab =3,...){
+  all <- c(x,y)
+  range <- c(min(all), max(all))
+  par(pty="s")
+  plot(x, y, xlim=range, ylim=range, asp=1,...)
+  abline(0,1, col = 'red', lw = lwab)
+}
+```
+
+## Load data
+
+```{r cars}
+load(file.path(ifolder, 'total_val.Rdata'))
+total <- total_val
+
+```
+
+
+```{r explore}
+library(reshape)
+library(ggplot2)
+library(devtools)
+# Histogram of covariates
+total_melt <- melt(total_val[,c(9,10,42,43,63,64,65,45,58,59,41,55,54)])
+
+png(file.path(ifolder, 'hist_covar_tot.png'), width = 1500, height = 300)
+total_melt %>%
+  ggplot( aes(x=value, fill=variable)) +
+    geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity')  +
+    labs(fill="") + facet_grid(cols = vars(total_melt$variable), scales = 'free')
+dev.off()
+
+# pair plots
+
+png(file.path(ifolder, 'Pairs_R80p_A.png'), width = 1400, height = 1100)
+pairs(~R80P+TCmean500 +  Elev + Slope  + impact + Vpre + pop10000 + distRoads, data=total_val,
+      upper.panel=panel.smooth, lower.panel=NULL, 
+      pch=20, main="Scatterplot Matrix", lwd = 3, labels = c('R80P','Tree cover 500',  "Elevation", "Slope", "Impact","Pre-value",'Pppulation','Distance to roads'))
+dev.off()
+
+
+png(file.path(ifolder, 'Pairs_R80p_B.png'), width = 1400, height = 1100)
+pairs(~R80P+ Nitro_000_015  + CEC_000_015  + SOC_000_015  +  Pseas + CWD + MAP , data=total_val,
+      upper.panel=panel.smooth, lower.panel=NULL, 
+       pch=20, main="Scatterplot Matrix", lwd = 3, labels = c("R80P", "Nitrogen", 'CEC'  , 'SOC',  'Precip. seasonality', 'CWD', 'MAP'))
+dev.off()
+
+png(file.path(ifolder, 'Pairs_YrYr_A.png'), width = 1400, height = 1100)
+pairs(~YrYr++TCmean500 +  Elev + Slope  + impact + Vpre + pop10000 + distRoads, data=total_val,
+      upper.panel=panel.smooth, lower.panel=NULL, 
+      pch=20, main="Scatterplot Matrix", lwd = 3, labels = c('YrYr','Tree cover 500',  "Elevation", "Slope", "Impact","Pre-value",'Pppulation','Distance to roads'))
+dev.off()
+
+
+png(file.path(ifolder, 'Pairs_YrYr_B.png'), width = 1400, height = 1100)
+pairs(~YrYr+ Nitro_000_015  + CEC_000_015  + SOC_000_015  +  Pseas + CWD + MAP , data=total_val,
+      upper.panel=panel.smooth, lower.panel=NULL, 
+       pch=20, main="Scatterplot Matrix", lwd = 3, labels = c("YrYr", "Nitrogen", 'CEC'  , 'SOC',  'Precip. seasonality', 'CWD', 'MAP'))
+dev.off()
+
+
+```
+

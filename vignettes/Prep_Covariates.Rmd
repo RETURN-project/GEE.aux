@@ -6,23 +6,26 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = F)
 library(GEE.aux)
 library(stringr)
 library(tidyverse)
 library(readr)
+library(dplyr)
+library(tidyr)
+library(raster)
 ```
 
 # User inputs
 ```{r inputs}
 # path to folder with data
-ifolder <- './inst/testdata/'
+ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/testdata/'#'./inst/testdata/'
 # path to folder where outputs should be stored
-ofolder <- './inst/testdata/'
+ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/testdata/'#'./inst/testdata/'
 # name of data files
 ifile <- 'samples_forest_fire_nat_n1000_VAL_'
 startPix <- 0 # first time series of the first input file to be processed
-endPix <- 40000# first time series of the last input file to be processed
+endPix <- 2000# first time series of the last input file to be processed
 intPix <- 2000# number of time series per input file
 startdt <- '1994-12-31'# start date of climate inputs 
 # column names of the data downloaded via GEE
@@ -65,8 +68,8 @@ for (i in seq(startPix,endPix,by =intPix)){
   rm(dat_tidy)
 }
 # separate coordinate values into individual columns
-df_covar <- df_covar %>%
-  separate(coords,into=c('lon','lat'),sep=", ",convert=TRUE)
+# df_covar <- df_covar %>%
+#   separate(coords,into=c('lon','lat'),sep=", ",convert=TRUE)
 # save the dataframe of covariates, as downloaded by GEE
 save(df_covar, file = file.path(ofolder, 'df_covar_tot.Rdata'))
     
@@ -99,6 +102,7 @@ month_tmax <- getMonthlyMeanClim(tmax, startdt)
 # BIO17 = Precipitation of Driest Quarter
 # BIO18 = Precipitation of Warmest Quarter
 # BIO19 = Precipitation of Coldest Quarter
+library(dismo)
 bioclim_vars <- biovars(month_prec, month_tmin, month_tmax)
 MAT <- bioclim_vars[[1]]# annual mean temperature
 MAP <- bioclim_vars[[12]]#Annual Precipitation
@@ -108,16 +112,84 @@ save(MAT, file = file.path(ifolder, "MAT"))
 save(MAP, file = file.path(ifolder, "MAP"))
 save(Pseas, file = file.path(ifolder, "Pseas"))
 
+
 # extract values of bioclimatic variables over points of interest
-p_mat <- raster::extract(x=MAT,y=cbind(df_covar$lon, df_covar$lat))
-p_map <- raster::extract(x=MAP,y=cbind(df_covar$lon, df_covar$lat))
-p_Pseas <- raster::extract(x=Pseas,y=cbind(df_covar$lon, df_covar$lat))
+coords_data <- df_covar %>%
+      separate(coords,into=c('lon','lat'),sep=", ",convert=TRUE)
+p_mat <- raster::extract(x=MAT,y=cbind(coords_data$lon, coords_data$lat))
+p_map <- raster::extract(x=MAP,y=cbind(coords_data$lon, coords_data$lat))
+p_Pseas <- raster::extract(x=Pseas,y=cbind(coords_data$lon, coords_data$lat))
 
 # add the bioclimatic variables to the dataframe of covariates
 df_covar$MAT <- p_mat
 df_covar$MAP <- p_map
 df_covar$Pseas <- p_Pseas
+
+```
+
+## Change type of covariates
+```{r type}
+df_covar$CEC_000_005 <- as.numeric(df_covar$CEC_000_005)
+df_covar$CEC_005_015 <- as.numeric(df_covar$CEC_005_015)
+df_covar$CEC_015_030 <- as.numeric(df_covar$CEC_015_030)
+df_covar$CEC_030_060 <- as.numeric(df_covar$CEC_030_060)
+df_covar$CEC_060_100 <- as.numeric(df_covar$CEC_060_100)
+df_covar$CEC_100_200 <- as.numeric(df_covar$CEC_100_200)
+df_covar$Nitro_000_005 <- as.numeric(df_covar$Nitro_000_005)
+df_covar$Nitro_005_015 <- as.numeric(df_covar$Nitro_005_015)
+df_covar$Nitro_015_030 <- as.numeric(df_covar$Nitro_015_030)
+df_covar$Nitro_030_060 <- as.numeric(df_covar$Nitro_030_060)
+df_covar$Nitro_060_100 <- as.numeric(df_covar$Nitro_060_100)
+df_covar$Nitro_100_200 <- as.numeric(df_covar$Nitro_100_200)
+df_covar$SOC_000_005 <- as.numeric(df_covar$SOC_000_005)
+df_covar$SOC_005_015 <- as.numeric(df_covar$SOC_005_015)
+df_covar$SOC_015_030 <- as.numeric(df_covar$SOC_015_030)
+df_covar$SOC_030_060 <- as.numeric(df_covar$SOC_030_060)
+df_covar$SOC_060_100 <- as.numeric(df_covar$SOC_060_100)
+df_covar$SOC_100_200 <- as.numeric(df_covar$SOC_100_200)
+df_covar$Silt_000_005 <- as.numeric(df_covar$Silt_000_005)
+df_covar$Silt_005_015 <- as.numeric(df_covar$Silt_005_015)
+df_covar$Silt_015_030 <- as.numeric(df_covar$Silt_015_030)
+df_covar$Silt_030_060 <- as.numeric(df_covar$Silt_030_060)
+df_covar$Silt_060_100 <- as.numeric(df_covar$Silt_060_100)
+df_covar$Silt_100_200 <- as.numeric(df_covar$Silt_100_200)
+df_covar$Clay_000_005 <- as.numeric(df_covar$Clay_000_005)
+df_covar$Clay_005_015 <- as.numeric(df_covar$Clay_005_015)
+df_covar$Clay_015_030 <- as.numeric(df_covar$Clay_015_030)
+df_covar$Clay_030_060 <- as.numeric(df_covar$Clay_030_060)
+df_covar$Clay_060_100 <- as.numeric(df_covar$Clay_060_100)
+df_covar$Clay_100_200 <- as.numeric(df_covar$Clay_100_200)
+# combine the soil information at varying depths
+df_covar$CEC_000_030 <- (df_covar$CEC_000_005 / 6) + (df_covar$CEC_005_015/3) + (df_covar$CEC_015_030/2)
+df_covar$SOC_000_030 <- (df_covar$SOC_000_005 / 6) + (df_covar$SOC_005_015/3) + (df_covar$SOC_015_030/2)
+df_covar$Nitro_000_030 <- (df_covar$Nitro_000_005 / 6) + (df_covar$Nitro_005_015/3) + (df_covar$Nitro_015_030/2)
+df_covar$CEC_000_015 <- (df_covar$CEC_000_005 / 3) + (df_covar$CEC_005_015*2/3) 
+df_covar$SOC_000_015 <- (df_covar$SOC_000_005 / 3) + (df_covar$SOC_005_015*2/3) 
+df_covar$Nitro_000_015 <- (df_covar$Nitro_000_005 / 3) + (df_covar$Nitro_005_015*2/3) 
+df_covar$Clay_000_015 <- (df_covar$Clay_000_005 / 3) + (df_covar$Clay_005_015*2/3) 
+df_covar$Silt_000_015 <- (df_covar$Silt_000_005 / 3) + (df_covar$Silt_005_015*2/3) 
+df_covar$ecoReg <-as.numeric(gsub("'","",df_covar$ecoReg))
+df_covar$id <-as.numeric(gsub("'","",df_covar$id))
+df_covar$distRoads <-as.numeric(df_covar$distRoads)
+
 save(df_covar, file = file.path(ofolder, 'df_covar_tot.Rdata'))
+```
+
+```{r combine}
+load(file.path(ifolder, 'df_rec_tot'))# load the recovery indicators
+df_rec_tot$ecoReg <- as.numeric(df_rec_tot$ecoReg)
+df_rec_tot$id <- as.numeric(df_rec_tot$id)
+total_val <- merge(df_rec_tot, df_covar,by=c("id","ecoReg", "coords")) 
+total_val$id <- as.numeric(total_val$id)
+total_val$ecoReg <- as.numeric(total_val$ecoReg)
+
+total_val <- total_val %>%
+      separate(coords,into=c('lon','lat'),sep=", ",convert=TRUE)
+
+total_val <- total_val[complete.cases(total_val),]
+total_val <- dplyr::distinct(total_val)
+save(total_val, file = file.path(ofolder, 'total_val.Rdata'))
+
 ```
 
 ```{r}

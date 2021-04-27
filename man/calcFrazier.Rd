@@ -36,7 +36,7 @@ calcFrazier(
 \item{nDeltaStart}{indicates the start of the post-disturbance period for the YrYr metric (expressed as number of years after the disturbance)}
 }
 \value{
-a list containing the RRI recovery indicator, R80p recovery indicator and YrYr recovery indicator
+a list containing the RRI recovery indicator, R80p recovery indicator, YrYr recovery indicator, disturbance impact, and pre-disturbance state
 }
 \description{
 Calculate recovery metrics from a time series with known disturbance date. The calcFrazier function derives the RRI, R80P and YrYr recovery indicators,

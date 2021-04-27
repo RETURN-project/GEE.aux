@@ -48,7 +48,7 @@ calcRecMetrics(
 \item{timeThres}{the maximum allowed time difference between the observed break and the disturbance \link{years}}
 }
 \value{
-
+a list containing the RRI recovery indicator, R80p recovery indicator, YrYr recovery indicator, disturbance impact, and pre-disturbance state
 }
 \description{
 Calculate recovery metrics

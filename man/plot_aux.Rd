@@ -10,12 +10,15 @@ plot_aux(
   main,
   lossdt_start,
   lossdt_end,
-  lossdt_start1,
-  lossdt_end1,
+  predt_start,
+  distdt_end,
+  postdt_start,
+  postdt_end,
   trend,
   met_rri,
   met_r80p,
-  met_yryr
+  met_yryr,
+  ...
 )
 }
 \arguments{
@@ -29,10 +32,6 @@ plot_aux(
 
 \item{lossdt_end}{end uncertainty window of disturbance date}
 
-\item{lossdt_start1}{start date for time window of accepted breaks}
-
-\item{lossdt_end1}{end date for time window of accepted breaks}
-
 \item{trend}{fitted trend component - vector of observations}
 
 \item{met_rri}{derived RRI metric}
@@ -40,6 +39,10 @@ plot_aux(
 \item{met_r80p}{derived R80p metric}
 
 \item{met_yryr}{derived YrYr metric}
+
+\item{lossdt_start1}{start date for time window of accepted breaks}
+
+\item{lossdt_end1}{end date for time window of accepted breaks}
 }
 \value{
 plot

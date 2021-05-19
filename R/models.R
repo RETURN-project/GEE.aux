@@ -10,6 +10,7 @@
 #' @import dplyr
 #' @import tidyverse
 #' @import plyr
+#' @import scales
 #' @export
 #'
 plot_BRT_hist <- function(mod_brt, dat_covar, names_covars, names_covars_short){
@@ -27,7 +28,7 @@ plot_BRT_hist <- function(mod_brt, dat_covar, names_covars, names_covars_short){
 
   dat_covar_mlt <- melt(dat_covar)
   dat_covar_mlt$tp <- 'Count'
-  rsp$tp <- 'Marginal effect'
+  rsp$tp <- 'Effect'
   rsp <- rsp[ with(rsp, order(infl, decreasing = T)),]
 
   rsp$variable <- factor(rsp$variable,levels = smmry$var)
@@ -39,9 +40,15 @@ plot_BRT_hist <- function(mod_brt, dat_covar, names_covars, names_covars_short){
   rsp$variable <- factor(rsp$variable, levels = smmry$var)
   dat_covar_mlt$variable <- factor(dat_covar_mlt$variable, levels = smmry$var)
 
+
   ggplot() +
     geom_histogram(data = dat_covar_mlt, aes(x = value), alpha = .5)+
     geom_line(data = rsp, aes(x = x, y = y), col = "red")+
-    facet_grid(tp ~ variable, scales='free')
+    facet_grid(tp ~ variable, scales='free') +
+    theme(strip.text = element_text(size = 18),
+          axis.text=element_text(size=15),
+          axis.title=element_text(size=18))+
+    scale_x_continuous(breaks=pretty_breaks(n=3)) +
+    scale_y_continuous(breaks=pretty_breaks(n=2))
 
 }

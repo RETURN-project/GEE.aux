@@ -24,4 +24,7 @@ Imports: bfast,
          lubridate,
          tidyr,
          readr,
-         testthat
+         testthat,
+         plyr,
+         reshape2,
+         scales

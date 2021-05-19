@@ -9,7 +9,7 @@ test_that("Straight line time series", {
   # generate a dataframe from the input data
   dat_tidy <- tidy_data(x,col_names)
 
-  expect_equal(dat_tidy$ecoReg, c('439','440'), tolerance = 1e-6)
-  expect_equal(dat_tidy$conf_fire_, c('1, 53, 1','10, 55, 18'), tolerance = 1e-6)
-  expect_equal(dat_tidy$doy_fire_, c('0, 1, 0','1, 5, 6'), tolerance = 1e-6)
+  expect_equal(dat_tidy$ecoReg, c('439','439','440'), tolerance = 1e-6)
+  expect_equal(dat_tidy$conf_fire_, c('1, 53, 1','1, 53, 1','10, 55, 18'), tolerance = 1e-6)
+  expect_equal(dat_tidy$doy_fire_, c('0, 1, 0','0, 1, 0','1, 5, 6'), tolerance = 1e-6)
 })

@@ -19,13 +19,13 @@ library(raster)
 # User inputs
 ```{r inputs}
 # path to folder with data
-ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/testdata/'#'./inst/testdata/'
+ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000/'#'./inst/testdata/'
 # path to folder where outputs should be stored
-ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/testdata/'#'./inst/testdata/'
+ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000/'#'./inst/testdata/'
 # name of data files
-ifile <- 'samples_forest_fire_nat_n1000_VAL_'
+ifile <- 'samples_forest_fire_nat_n10000_VAL_'
 startPix <- 0 # first time series of the first input file to be processed
-endPix <- 2000# first time series of the last input file to be processed
+endPix <- 28000# first time series of the last input file to be processed
 intPix <- 2000# number of time series per input file
 startdt <- '1994-12-31'# start date of climate inputs 
 # column names of the data downloaded via GEE
@@ -47,9 +47,13 @@ tmax <- brick(file.path(ifolder, "cru_ts4.04.1901.2019.tmx.dat.nc"), varname="tm
 ```{r tidy_data}
 # generate a dataframe from the input data 
 for (i in seq(startPix,endPix,by =intPix)){
-  if(i == endPix){endpnt = 'None'}else{endpnt = i+intPix}
+  if(i == endPix){
+    endpnt = 'None'
+    endStr <- 'None'}else{
+      endpnt = i+intPix
+      endStr <- sprintf('%i',endpnt)}
   # read the input file
-  x <- readLines(file.path(ifolder,paste0(ifile,i,'_',endpnt,'.csv')))
+  x <- readLines(file.path(ifolder,paste0(ifile,sprintf('%i',i),'_',endStr,'.csv')))
   # generate a dataframe
   dat_tidy <- tidy_covarData(x,col_names)
   # seperate soil data in columns per depth
@@ -171,6 +175,7 @@ df_covar$Silt_000_015 <- (df_covar$Silt_000_005 / 3) + (df_covar$Silt_005_015*2/
 df_covar$ecoReg <-as.numeric(gsub("'","",df_covar$ecoReg))
 df_covar$id <-as.numeric(gsub("'","",df_covar$id))
 df_covar$distRoads <-as.numeric(df_covar$distRoads)
+df_covar$CWD <- df_covar$CWD*0.1
 
 save(df_covar, file = file.path(ofolder, 'df_covar_tot.Rdata'))
 ```

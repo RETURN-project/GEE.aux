@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = F)
 
 library(zoo)
 library(GEE.aux)
@@ -23,13 +23,13 @@ library(lubridate)
 ## User inputs
 ```{r inputs}
 # path to folder with data
-ifolder <- '../inst/testdata/'
+ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000'
 # path to folder where outputs should be stored
-ofolder <- '../inst/testdata/'
+ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000'
 # name of data files
-ifile <- 'samples_forest_fire_nat_n1000_' # base name of the input file
+ifile <- 'samples_forest_fire_nat_n10000_' # base name of the input file
 startPix <- 0 # first time series of the first input file to be processed
-endPix <- 40000# first time series of the last input file to be processed
+endPix <- 348000# first time series of the last input file to be processed
 intPix <- 2000# number of time series per input file
 
 confLevFire <- 95# mimimum confidence level to recognize a fire event
@@ -49,16 +49,21 @@ timeThres <- 1.5# the maximum allowed time difference between the reported distu
 # Read data into tidy data frame
 ```{r tidy_data}
 for (i in seq(startPix,endPix,by =intPix)){
-  if(i == endPix){endpnt = 'None'}else{endpnt = i+intPix}
-  # read the input file
-  x <- readLines(file.path(ifolder,paste0(ifile, i, '_', endpnt, '.csv')))
+  if(i == endPix){
+    endpnt = 'None'
+    endStr <- 'None'
+  } else{
+    endpnt = i+intPix
+    endStr <- sprintf('%i',endpnt)}#'None'
+    # read the input file
+  x <- readLines(file.path(ifolder,paste0(ifile, sprintf('%i',i), '_', endStr, '.csv')))
   # column names of the data 
   col_names <- c("id","ecoReg","coords","img_names","series","img_doy_","doy_fire_","img_conf_","conf_fire_")
   # generate a dataframe from the input data 
   dat_tidy <- tidy_data(x,col_names)
   # write the dataframe to a csv file
-  write_csv(dat_tidy, file.path(ofolder, paste0('tidy_',ifile, i, '_', endpnt, '.csv')))
-  save(dat_tidy, file = file.path(ofolder, paste0('tidy_', ifile, i, '_', endpnt, '.Rdata')))
+  write_csv(dat_tidy, file.path(ofolder, paste0('tidy_',ifile, sprintf('%i',i), '_', endStr, '.csv')))
+  save(dat_tidy, file = file.path(ofolder, paste0('tidy_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
   
   # column names of the dataframe
   cols <- names(dat_tidy)# all column names
@@ -67,7 +72,7 @@ for (i in seq(startPix,endPix,by =intPix)){
   auxcols <- cols[!startsWith(cols,"p__") & !startsWith(cols,"series__") & !startsWith(cols,"img_doy_") & !startsWith(cols,"doy_fire_") & !startsWith(cols,"img_conf_") & !startsWith(cols,"conf_fire_")]# column names of the columns containing the auxiliary information
   firecols <- cols[!startsWith(cols,"p__") & !startsWith(cols,"series__")]# column names of the columns containing fire-related info 
   col_names <- list(cols = cols, dtcols = dtcols, obscols = obscols, auxcols = auxcols, firecols = firecols)
-  save(col_names, file = file.path(ofolder, paste0('col_names_', ifile, i, '_', endpnt, '.Rdata')))
+  save(col_names, file = file.path(ofolder, paste0('col_names_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
   rm(x, col_names, dat_tidy, cols, dtcols, obscols, auxcols, firecols)
 }
 ```
@@ -75,10 +80,15 @@ for (i in seq(startPix,endPix,by =intPix)){
 # Extract fire dates
 ```{r regular_ts}
 for (i in seq(startPix,endPix,by =intPix)){
-  if(i == endPix){endpnt = 'None'}else{endpnt = i+intPix}
+  if(i == endPix){
+    endpnt = 'None'
+    endStr <- 'None'
+    }else{
+      endpnt = i+intPix
+      endStr <- sprintf('%i',endpnt)}
   # load data
-  load(file.path(ofolder, paste0('tidy_', ifile, i, '_', endpnt, '.Rdata')))
-  load(file.path(ofolder, paste0('col_names_', ifile, i, '_', endpnt, '.Rdata')))
+  load(file.path(ofolder, paste0('tidy_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
+  load(file.path(ofolder, paste0('col_names_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
   firecols <- col_names$firecols
   # get the columns with fire related information
   dat_fire <- dat_tidy[,firecols]
@@ -91,7 +101,7 @@ for (i in seq(startPix,endPix,by =intPix)){
   # get fire events per time series
   fireDts <- lapply(1:dim(fire_doy)[1], function(i){getFireDate(as.numeric(fire_conf[i,as.character(firedts)]), as.numeric(fire_doy[i,as.character(firedts)]),firedts, confLevFire)})
   # save results
-  save(fireDts, file = file.path(ofolder, paste0('fire_', ifile, i, '_', endpnt, '.Rdata')))# save the result
+  save(fireDts, file = file.path(ofolder, paste0('fire_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))# save the result
   rm(firecols, dat_tidy, col_names, tidy_fire, fire_doy, fire_conf, firedts, fireDts)
 }
 ```
@@ -99,10 +109,20 @@ for (i in seq(startPix,endPix,by =intPix)){
 # convert the irregular time series to regular ones
 
 ```{r regular_ts}
-for (i in seq(startPix,endPix,by =intPix)){
-  if(i == endPix){endpnt = 'None'}else{endpnt = i+intPix}
-  load(file.path(ofolder, paste0('tidy_', ifile, i, '_', endpnt, '.Rdata')))
-  load(file.path(ofolder, paste0('col_names_', ifile, i, '_', endpnt, '.Rdata')))
+library(parallel)
+numCores <- parallel::detectCores()-1 # Requires library(parallel)
+print(numCores)
+
+mclapply(seq(startPix,endPix,by =intPix), function(i){
+# for (i in seq(startPix,endPix,by =intPix)){
+  if(i == endPix){
+    endpnt = 'None'
+    endStr <- 'None'
+  }else{
+      endpnt = i+intPix
+      endStr <-  sprintf('%i',endpnt)}
+  load(file.path(ofolder, paste0('tidy_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
+  load(file.path(ofolder, paste0('col_names_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
   dtcols <- col_names$dtcols
   obscols <- col_names$obscols
   auxcols <- col_names$auxcols
@@ -129,55 +149,77 @@ for (i in seq(startPix,endPix,by =intPix)){
   names(df_out) <- dts# add dates of observations to column names
   df_out <- cbind(dat_tidy[,auxcols],df_out)# add auxiliary data to dataframe
   
-  save(df_out, file = file.path(ofolder, paste0('reg_', ifile, i, '_', endpnt, '.Rdata')))# save the result
+  save(df_out, file = file.path(ofolder, paste0('reg_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))# save the result
   rm(col_names, dat_tidy, dtcols, obscols, auxcols, mnyr, mxyr, startdt, enddt, dts, dtsi, obsi, out, df_out)
-}
+}, mc.cores = numCores)
 ```
 
 # Piecewise regression
 
 ```{r segment}
-for (i in seq(startPix,endPix,by =intPix)){
+library(parallel)
+numCores <- parallel::detectCores()-1 # Requires library(parallel)
+print(numCores)
+
+mclapply(seq(startPix,endPix,by =intPix), function(i){
   if(i == endPix){endpnt = 'None'}else{endpnt = i+intPix}
-  load(file.path(ofolder, paste0('reg_', ifile, i, '_', endpnt, '.Rdata')))
+  load(file.path(ofolder, paste0('reg_', ifile, sprintf('%i',i), '_', sprintf('%i',endpnt), '.Rdata')))
   # number of pixels to be processed
   nts <- dim(df_out)[1]
   # fit piecewise regression for each pixel
   seg <- lapply(1:nts, function(i){getSegments(as.numeric(df_out[i,-c(1:4)]),12,0.15,T)})
   # save result
-  save(seg, file = file.path(ofolder, paste0('seg_', ifile, i, '_', endpnt, '.Rdata')))
+  save(seg, file = file.path(ofolder, paste0('seg_', ifile, sprintf('%i',i), '_', sprintf('%i',endpnt), '.Rdata')))
   rm(nts, df_out, seg)
-}
+}, mc.cores = numCores)
+
+# for (i in seq(startPix,endPix,by =intPix)){
+#   if(i == endPix){endpnt = 'None'}else{endpnt = i+intPix}
+#   load(file.path(ofolder, paste0('reg_', ifile, sprintf('%i',i), '_', sprintf('%i',endpnt), '.Rdata')))
+#   # number of pixels to be processed
+#   nts <- dim(df_out)[1]
+#   # fit piecewise regression for each pixel
+#   seg <- lapply(1:nts, function(i){getSegments(as.numeric(df_out[i,-c(1:4)]),12,0.15,T)})
+#   # seg <- mclapply(1:nts, function(i){getSegments(as.numeric(df_out[i,-c(1:4)]),12,0.15,T)}, mc.cores = numCores)
+#   # save result
+#   save(seg, file = file.path(ofolder, paste0('seg_', ifile, sprintf('%i',i), '_', sprintf('%i',endpnt), '.Rdata')))
+#   rm(nts, df_out, seg)
+# }
 ```
 
 # Calculate recovery metrics
 
 ```{r recovery}
 for (i in seq(startPix,endPix,by =intPix)){
-  if(i == endPix){endpnt = 'None'}else{endpnt = i+intPix}
-  load(file.path(ofolder,paste0('rec_', ifile, i, '_', endpnt, '.Rdata')))
-  load(file.path(ofolder,paste0('seg_', ifile, i, '_', endpnt, '.Rdata')))
-  load(file.path(ofolder,paste0('reg_', ifile, i, '_', endpnt, '.Rdata')))
-  load(file.path(ofolder,paste0('fire_', ifile, i, '_', endpnt, '.Rdata')))
+  if(i == endPix){
+    endpnt = 'None'
+    endStr <- 'None'
+  }else{
+      endpnt = i+intPix
+      endStr <-  sprintf('%i',endpnt)}
+  # load(file.path(ofolder,paste0('rec_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
+  load(file.path(ofolder,paste0('seg_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
+  load(file.path(ofolder,paste0('reg_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
+  load(file.path(ofolder,paste0('fire_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
   
   nts <- dim(df_out)[1]
   dts <- as.Date(names(df_out)[-c(1:4)])
   
   # calculate recovery metrics
-  df_lst <-  lapply(1:nts,function(i){
+  df_lst <-  lapply(1:nts,function(ii){
     # get observation number of reported disturbance
-    fdts <- fireDts[[i]][1]# only take the first fire
+    fdts <- fireDts[[ii]][1]# only take the first fire
     fdts[!is.na(fdts)] <- rollback(fdts[!is.na(fdts)], roll_to_first = T)
     tdist <- which(dts %in% fdts)# convert fire date to observation number
     # trend component of piecewise regression
-    tsi <- seg[[i]]$trend
+    tsi <- seg[[ii]]$trend
     # breakpoints of piecewise regression
-    tbp <- seg[[i]]$breakpoints
+    tbp <- seg[[ii]]$breakpoints
     tbp <- tbp[tbp!=0 & tbp!=length(tsi)]
     # calculate recovery metric for each fire event
-    rec <- sapply(1:length(fdts), function(ii){
-      if(!is.na(tdist[ii])){
-        calcRecMetrics(tsi, tdist[ii], obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart, tbp, selBreak, chkBrk, timeThres)
+    rec <- sapply(1:length(fdts), function(iii){
+      if(!is.na(tdist[iii])){
+        calcRecMetrics(tsi, tdist[iii], obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart, tbp, selBreak, chkBrk, timeThres)
       }else{
         list('RRI' = NA, 'R80P' = NA, 'YrYr' = NA , 'impact' = NA, 'Vpre' = NA)
       }})
@@ -192,29 +234,35 @@ for (i in seq(startPix,endPix,by =intPix)){
   # add auxiliary data to the dataframe
   df_rec <- cbind(df_out[,c(1:4)], df_fr)#dat_tidy[,auxcols]
   # save result
-  save(df_rec, file = file.path(ofolder,  paste0('rec_', ifile, i, '_', endpnt, '.Rdata')))
-  rm(df_out, nts, dts, df_lst, fdts, fireDts, tdist, tsi, seg, tbp, rec, df_fr, df_rec)
+  save(df_rec, file = file.path(ofolder,  paste0('rec_', ifile, sprintf('%i',i), '_', endStr, '.Rdata')))
+  rm(df_out, nts, dts, df_lst, fireDts, seg, df_fr, df_rec)#fdts,tdist, tsi,tbp,  rec,
 }
 ```
 
 ## Merge data  
 ```{r merge}
 for (i in seq(startPix,endPix,by =intPix)){
-  if(i == endPix){endpnt = 'None'}else{endpnt = i+intPix}
+  if(i == endPix){
+    endpnt = 'None'
+    endStr <- 'None'
+  }else{
+      endpnt = i+intPix
+      endStr <-  sprintf('%i',endpnt)}
+  # if(i == endPix){endpnt = 'None'}else{endpnt = i+intPix}
   
-  load(file.path(ofolder,paste0('rec_', ifile, i,'_',endpnt,'.Rdata')))
+  load(file.path(ofolder,paste0('rec_', ifile, sprintf('%i',i),'_',endStr,'.Rdata')))
   if(i==0){df_rec_tot <- df_rec}else{df_rec_tot <- rbind(df_rec_tot, df_rec)}
   rm(df_rec)
   
-  load(file.path(ofolder,paste0('seg_', ifile,i,'_',endpnt,'.Rdata')))
+  load(file.path(ofolder,paste0('seg_', ifile,sprintf('%i',i),'_',endStr,'.Rdata')))
   if(i==0){seg_tot <- seg}else{seg_tot <- c(seg_tot, seg)}
   rm(seg)
   
-  load(file.path(ofolder,paste0('reg_', ifile,i,'_',endpnt,'.Rdata')))
+  load(file.path(ofolder,paste0('reg_', ifile,sprintf('%i',i),'_',endStr,'.Rdata')))
   if(i==0){df_out_tot <- df_out}else{df_out_tot <- rbind(df_out_tot, df_out)}
   rm(df_out)
   
-  load(file.path(ofolder,paste0('fire_', ifile,i,'_',endpnt,'.Rdata')))
+  load(file.path(ofolder,paste0('fire_', ifile,sprintf('%i',i),'_',endStr,'.Rdata')))
   if(i==0){fireDts_tot <- fireDts}else{fireDts_tot <- c(fireDts_tot, fireDts)}
   rm(fireDts)
 }

@@ -6,14 +6,14 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = F)
 ```
 
 # inputs
 ```{r inputs}
-ifolder <- '../inst/testdata/' # folder with all processed data
-ofolder <- '../inst/testdata/' # folder with all processed data
-ifile <- 'samples_forest_fire_nat_n1000_' # base name of the input file
+ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000'#'../inst/testdata/' # folder with all processed data
+ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000'#'../inst/testdata/' # folder with all processed data
+ifile <- 'samples_forest_fire_nat_n10000_' # base name of the input file
 
 ```
 
@@ -35,15 +35,19 @@ getPlotData <- function(id){
   fdts[!is.na(fdts)] <- rollback(fdts[!is.na(fdts)], roll_to_first = T)
   # tdist <- which(dts %in% fdts)# convert fire date to observation number
   # distyr <- as.numeric(df_out$lossyr[id])
+  obsi <- df_out_tot[id,-c(1:4)]
+  trend <- seg_tot[[id]]$trend
+  
   brkpts <- seg_tot[[id]]$breakpoints
-  brkdts <- dts[brkpts[1]]
+  dbr <- trend[brkpts+1]-trend[brkpts]
+  brkpts <- brkpts[which(dbr<0)]
+  if(length(brkpts)>0){tbp <- brkpts[1]}else{tbp <- seg_tot[[id]]$breakpoints[1]}
+  brkdts <- dts[tbp]
   predt_start <- seq(brkdts, length = 2, by = "-24 months")[2]
   distdt_end <- seq(brkdts, length = 2, by = "+12 months")[2]
   postdt_start <- seq(brkdts, length = 2, by = "+48 months")[2]
   postdt_end <- seq(brkdts, length = 2, by = "+72 months")[2]
 
-  obsi <- df_out_tot[id,-c(1:4)]
-  trend <- seg_tot[[id]]$trend
   met_rri <- df_rec_tot$RRI[id]
   met_r80p <- df_rec_tot$R80P[id]
   met_yryr <- df_rec_tot$YrYr[id]
@@ -66,10 +70,13 @@ fracR80p <- sum(!is.na(df_rec_tot$R80P))/length(df_rec_tot$R80P)
 fracYrYr <- sum(!is.na(df_rec_tot$YrYr))/length(df_rec_tot$YrYr)
 
 # plot time series with max, median and min RRI
+#id 19737
+library(lubridate)
 ylim <- c(0,1)
 sortval <- sort(df_rec_tot$RRI)
 id <- which(df_rec_tot$RRI == sortval[length(sortval)-1])
-dat <- getPlotData(id)
+# calcRecMetrics(as.numeric(df_out_tot[id,-c(1:4)]), fdts, 12, 2, 1, 2, 4, 2, 4, dts[seg_tot[[id]]$breakpoints[1]], selBreak = 'first', chkBrk = T, timeThres = 1.5)
+dat <- getPlotData(id[1])
   plot_aux(dts, dat$obsi,id, dat$lossdt_start,dat$lossdt_end,dat$predt_start,dat$distdt_end,
            dat$postdt_start,dat$postdt_end,dat$trend,dat$met_rri,dat$met_r80p,dat$met_yryr, ylim=ylim)
 
@@ -146,44 +153,51 @@ dat <- getPlotData(id)
 # Spatial plots
 ```{r, spatial_plot}
 # Spatial plot
-
+library(GISTools)
 temp <- str_split(df_rec_tot$coords, ", ")
 lon <- as.numeric(unlist(lapply(temp, function(x) x[1]))) 
 lat <- as.numeric(unlist(lapply(temp, function(x) x[2]))) 
 rm(temp)
 df_rec_tot$lat <- lat
-df_rec_tot$lon <- lon
+df_rec_tot$long <- lon
+df_rec_tot_sp <- df_rec_tot
 
-coordinates(df_rec_tot) <- ~lon+lat
-proj4string(df_rec_tot) <- CRS("+init=epsg:4326")
+coordinates(df_rec_tot_sp) <- ~long+lat
+proj4string(df_rec_tot_sp) <- CRS("+init=epsg:4326")
 
-df_rec_tot <- st_as_sf(df_rec_tot,coords = c('lon','lat'))
+df_rec_tot_sp <- st_as_sf(df_rec_tot_sp,coords = c('long','lat'))
 
 # Vector of Brazilian borders
 br <- st_as_sf(getData('GADM', country = 'BRA', level = 1))# retrieve data
-br <- st_transform(br, crs =  crs(df_rec_tot))# convert CRS 
+br <- st_transform(br, crs =  crs(df_rec_tot_sp))# convert CRS 
 
 #generate plot
 png(filename = file.path(ifolder, 'Spat_RRI.png'), width = 500, height = 500)
 ggplot() +
     geom_sf(data = br, color = 'black') +
-    geom_sf(data = df_rec_tot[!is.na(df_rec_tot$RRI),],  aes(col = RRI))+
+    geom_sf(data = df_rec_tot_sp[!is.na(df_rec_tot_sp$RRI),],  aes(col = RRI))+
     scale_colour_gradientn(colours = terrain.colors(10), 
-                        limits = c(0, 2), oob = scales::squish)
+                        limits = c(0, 2), oob = scales::squish)+ 
+  theme_bw()
 dev.off()
+
+perc_r80p <- quantile(df_rec_tot[!is.na(df_rec_tot$R80P),]$R80P, c(.10, .90)) 
 
 png(filename = file.path(ifolder, 'Spat_R80p.png'), width = 500, height = 500)
 ggplot() +
     geom_sf(data = br, color = 'black') +
-    geom_sf(data = df_rec_tot[!is.na(df_rec_tot$R80P),],  aes(col = R80P))+
+    geom_sf(data = df_rec_tot_sp[!is.na(df_rec_tot_sp$R80P),],  aes(col = R80P))+
     scale_colour_gradientn(colours = terrain.colors(10), 
-                        limits = c(1, 1.5), oob = scales::squish)
+                        limits = c(perc_r80p[1], perc_r80p[2]), oob = scales::squish)+ 
+  theme_bw()+
+  ggspatial::annotation_north_arrow(location = "br", which_north = "true"  )
+
 dev.off()
 
 png(filename = file.path(ifolder, 'Spat_YrYr.png'), width = 500, height = 500)
 ggplot() +
     geom_sf(data = br, color = 'black') +
-    geom_sf(data = df_rec_tot[!is.na(df_rec_tot$YrYr),],  aes(col = YrYr))+
+    geom_sf(data = df_rec_tot_sp[!is.na(df_rec_tot_sp$YrYr),],  aes(col = YrYr))+
     scale_colour_gradientn(colours = terrain.colors(10), 
                         limits = c(0, 0.007), oob = scales::squish)
 dev.off()

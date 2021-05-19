@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = F)
 library(reshape2)
 library(dplyr)
 library(tidyverse)
@@ -26,9 +26,9 @@ library(caret)
 
 ```{r inputs}
 # path to folder with data
-ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/testdata/'#'./inst/testdata/'
+ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000/'#'./inst/testdata/'
 # path to folder where outputs should be stored
-ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/testdata/'#'./inst/testdata/'
+ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000/'#'./inst/testdata/'
 # name of data files
 ```
 
@@ -60,7 +60,7 @@ zeroSA <- coP$x.intercept #in kilometers
 
 # generate spatial blocks using the spatial range of zero autocorrelation
 folds <- spatialBlock(df_sf, rasterLayer=MAP, theRange=zeroSA*1000, k=10, biomod2Format=F)
-
+save(folds, file = file.path(ofolder, 'folds.Rdata'))
 # plot the blocks
 png(file.path(ifolder, 'folds_YrYr.png'), width = 700, height = 550)
 plot(folds)
@@ -69,11 +69,24 @@ dev.off()
 
 
 ```{r brt_yryr}
-names_covars <- c('TCmean5000', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP','impact','Vpre', 'pop10000', 'distRoads')
+# Select the most optimal tree cover range
+lm_R80PTC1 <- lm(YrYr ~ TCmean500, data = total_val)#
+lm_R80PTC2 <- lm(YrYr ~ TCmean1000, data = total_val)
+lm_R80PTC3 <- lm(YrYr ~ TCmean5000, data = total_val)
+AIC(lm_R80PTC1, lm_R80PTC2, lm_R80PTC3)
+
+lm_pop1 <- lm(YrYr ~ pop500, data = total_val)
+lm_pop2 <- lm(YrYr ~ pop1000, data = total_val)#
+lm_pop3 <- lm(YrYr ~ pop5000, data = total_val)
+lm_pop4 <- lm(YrYr ~ pop10000, data = total_val)
+AIC(lm_pop1, lm_pop2, lm_pop3,lm_pop4)
+
+
+names_covars <- c('TCmean500', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP','impact','Vpre', 'pop10000', 'distRoads')
 names_covars_short <- c('TC', 'Elev.', 'Slope','N','CEC','SOC', 'CWD','P. seas','MAP','Impact','Vpre', 'Pop.', 'Roads')
 
 # train brt model over a range of hyperparameters using 10 fold cross validation
-grid<-expand.grid(.n.trees=seq(1000,1500,by=500),.interaction.depth=seq(1,5,by=2),.shrinkage=c(.01,.1), bag.fraction = c(0.5,0.75), .n.minobsinnode=10)
+grid<-expand.grid(.n.trees=seq(1000,1500,by=500),.interaction.depth=seq(1,5,by=2),.shrinkage=c(.001,.01,.1), bag.fraction = c(0.5,0.75), .n.minobsinnode=10)
 
 # use 10 fold cross validation to define the most optimal settings
 dev_mod <- matrix(nrow = 10, ncol = dim(grid)[1])# deviance of each fold (rows) and each combination of settings (cols)
@@ -99,6 +112,9 @@ rsq_final <- colMeans(rsq_mod, na.rm = T)[best_mod]
 # apply final brt model over entire dataset
 mod_brt <- gbm.fixed(total_val,gbm.x = names_covars, gbm.y = 'YrYr', tree.complexity=grid$.interaction.depth[best_mod], learning.rate=grid$.shrinkage[best_mod], bag.fraction = grid$bag.fraction[best_mod], n.trees = grid$.n.trees[best_mod], family ='gaussian')
 
+save(dev_mod, file = file.path(ofolder, 'dev_mod_YrYr_full.Rdata'))
+save(rsq_mod, file = file.path(ofolder, 'rsq_mod_YrYr_full.Rdata'))
+save(mod_brt, file = file.path(ofolder, 'mod_brt_YrYr_full.Rdata'))
 # assess variable importance 
 # summary(mod_brt)
 
@@ -120,7 +136,7 @@ dev.off()
 
 # ---------------------------------------------------------
 # ---------------------------------------------------------
-names_covars_part <- c('TCmean5000', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP', 'pop10000', 'distRoads')
+names_covars_part <- c('TCmean500', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP', 'pop10000', 'distRoads')
 names_covars_short_part <- c('TC', 'Elev.', 'Slope','N','CEC','SOC', 'CWD','P. seas','MAP', 'Pop.', 'Roads')
 
 # use 10 fold cross validation to define the most optimal settings
@@ -211,12 +227,23 @@ dev.off()
 library(gbm)
 library(dismo)
 library(caret)
+# Select the most optimal tree cover range
+lm_R80PTC1 <- lm(R80P ~ TCmean500, data = total_val)#
+lm_R80PTC2 <- lm(R80P ~ TCmean1000, data = total_val)
+lm_R80PTC3 <- lm(R80P ~ TCmean5000, data = total_val)
+AIC(lm_R80PTC1, lm_R80PTC2, lm_R80PTC3)
 
-names_covars <- c('TCmean5000', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP','impact','Vpre', 'pop10000', 'distRoads')
+lm_pop1 <- lm(R80P ~ pop500, data = total_val)
+lm_pop2 <- lm(R80P ~ pop1000, data = total_val)#
+lm_pop3 <- lm(R80P ~ pop5000, data = total_val)
+lm_pop4 <- lm(R80P ~ pop10000, data = total_val)
+AIC(lm_pop1, lm_pop2, lm_pop3,lm_pop4)
+
+names_covars <- c('TCmean500', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP','impact','Vpre', 'pop500', 'distRoads')
 names_covars_short <- c('TC', 'Elev.', 'Slope','N','CEC','SOC', 'CWD','P. seas','MAP','Impact','Vpre', 'Pop.', 'Roads')
 
 # train brt model over a range of hyperparameters using 10 fold cross validation
-grid<-expand.grid(.n.trees=seq(1000,1500,by=500),.interaction.depth=seq(1,5,by=2),.shrinkage=c(.01,.1), bag.fraction = c(0.5,0.75), .n.minobsinnode=10)
+grid<-expand.grid(.n.trees=seq(1000,1500,by=500),.interaction.depth=seq(1,5,by=2),.shrinkage=c(.001,.01,.1), bag.fraction = c(0.5,0.75), .n.minobsinnode=10)
 
 # use 10 fold cross validation to define the most optimal settings
 dev_mod <- matrix(nrow = 10, ncol = dim(grid)[1])# deviance of each fold (rows) and each combination of settings (cols)
@@ -254,7 +281,7 @@ dev.off()
 
 # ---------------------------------------------------------
 # ---------------------------------------------------------
-names_covars_part <- c('TCmean5000', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP', 'pop10000', 'distRoads')
+names_covars_part <- c('TCmean500', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP', 'pop500', 'distRoads')
 names_covars_short_part <- c('TC', 'Elev.', 'Slope','N','CEC','SOC', 'CWD','P. seas','MAP', 'Pop.', 'Roads')
 # use 10 fold cross validation to define the most optimal settings
 dev_mod_part <- matrix(nrow = 10, ncol = dim(grid)[1])# deviance of each fold (rows) and each combination of settings (cols)

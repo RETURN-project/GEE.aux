@@ -14,7 +14,7 @@ test_that("Generate a regular time series", {
   met_r80p <- 0.36
   met_yryr <- 0.02
 
-  pl <- plot_aux(dts, obsi,main, lossdt_start,lossdt_end,lossdt_start1,lossdt_end1,
+  pl <- plot_aux(dts, obsi,main, lossdt_start,lossdt_end,lossdt_start1,lossdt_end1,lossdt_start1,lossdt_end1,
                        trend,met_rri,met_r80p,met_yryr)
 
   expect_equal(pl, c(), tolerance = 1e-6)

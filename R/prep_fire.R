@@ -6,9 +6,10 @@
 #' @export
 #'
 extract_date_fire <- function(x){
-  sp <- strsplit(x,'-')
-  L <- lapply(sp, function(x){x[1]})
-  as.numeric(str_replace(unlist(L),"'",""))
+  sp <- strsplit(x,'_')
+  L <- lapply(sp, function(x){x[1:3]})
+  L <- as.numeric(str_replace(unlist(L),"'",""))
+  L[1]*10000 + L[2]*100 + L[3]
 }
 
 #' Extract the dates of fire events
@@ -68,11 +69,13 @@ tidy_fire_date <- function(dat_fire){
   auxcols <- firecols[!startsWith(firecols,"dt_") & !startsWith(firecols,"CONFobs__") & !startsWith(firecols,"DOYobs_") & !startsWith(firecols,"img_conf_")]
   # make dataframe of fire doy
   fire_doy <- dat_tidy_fire[,doycols]
+  fire_doy <- as.data.frame(sapply(fire_doy, as.numeric))
   firedts <- as.Date(as.character(dat_tidy_fire[1,dtcols]),'%Y%m%d')
   names(fire_doy) <- firedts
   fire_doy <- cbind(dat_tidy_fire[,auxcols], fire_doy)
   # make dataframe of fire confidence
   fire_conf<- dat_tidy_fire[,confcols]
+  fire_conf <- as.data.frame(sapply(fire_conf, as.numeric))
   names(fire_conf) <- firedts
   fire_conf <- cbind(dat_tidy_fire[,auxcols], fire_conf)
   # export dataframes

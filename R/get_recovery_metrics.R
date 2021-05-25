@@ -319,13 +319,18 @@ calcRecMetrics <- function(tsi, tdist, obspyr, nPre, nDist, nPost, nPostStart, n
     if(timeChck & postChck & distChck & brkChck & brkChckPre){
       # Calculate Frazier recovery metrics on BFAST trend component
       frz <- calcFrazier(as.numeric(tsi), (tbp+1), obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart)
+      chcks <- list(T,timeChck,postChck, distChck, brkChck, brkChckPre)
+      names(chcks) <- c('Break','timeChck','postChck', 'distChck', 'brkChck', 'brkChckPre')
+      frz <- c(frz, chcks)
     }else{
-      frz <- list(NA, NA, NA, NA, NA)
-      names(frz) <- c('RRI', 'R80P', 'YrYr', 'impact', 'Vpre')
+      frz <- list(NA, NA, NA, NA, NA,T,timeChck,postChck, distChck, brkChck, brkChckPre)
+      names(frz) <- c('RRI', 'R80P', 'YrYr', 'impact', 'Vpre',
+                      'Break','timeChck','postChck', 'distChck', 'brkChck', 'brkChckPre')
     }
   }else{
-    frz <- list(NA, NA, NA, NA, NA)
-    names(frz) <- c('RRI', 'R80P', 'YrYr', 'impact', 'Vpre')
+    frz <- list(NA, NA, NA, NA, NA,F,NA,NA, NA, NA, NA)
+    names(frz) <- c('RRI', 'R80P', 'YrYr', 'impact', 'Vpre',
+                    'Break','timeChck','postChck', 'distChck', 'brkChck', 'brkChckPre')
   }
 frz
 }

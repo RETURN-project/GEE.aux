@@ -23,9 +23,9 @@ library(lubridate)
 ## User inputs
 ```{r inputs}
 # path to folder with data
-ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000'
+ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000_GEEfire'
 # path to folder where outputs should be stored
-ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000'
+ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000_GEEfire'
 # name of data files
 ifile <- 'samples_forest_fire_nat_n10000_' # base name of the input file
 startPix <- 0 # first time series of the first input file to be processed
@@ -221,7 +221,7 @@ for (i in seq(startPix,endPix,by =intPix)){
       if(!is.na(tdist[iii])){
         calcRecMetrics(tsi, tdist[iii], obspyr, nPre, nDist, nPost, nPostStart, nDelta, nDeltaStart, tbp, selBreak, chkBrk, timeThres)
       }else{
-        list('RRI' = NA, 'R80P' = NA, 'YrYr' = NA , 'impact' = NA, 'Vpre' = NA)
+        list('RRI' = NA, 'R80P' = NA, 'YrYr' = NA , 'impact' = NA, 'Vpre' = NA, 'Break' = NA,'timeChck' = NA,'postChck' = NA, 'distChck' = NA, 'brkChck' = NA, 'brkChckPre' = NA)
       }})
   })
   df_fr <- as.data.frame(t(data.frame(do.call(cbind.data.frame,df_lst))))
@@ -230,6 +230,13 @@ for (i in seq(startPix,endPix,by =intPix)){
   df_fr$YrYr <- unlist(df_fr$YrYr)
   df_fr$impact <- unlist(df_fr$impact)
   df_fr$Vpre <- unlist(df_fr$Vpre)
+  df_fr$Break <- unlist(df_fr$Break)
+  df_fr$timeChck <- unlist(df_fr$timeChck)
+  df_fr$postChck <- unlist(df_fr$postChck)
+  df_fr$distChck <- unlist(df_fr$distChck)
+  df_fr$brkChck <- unlist(df_fr$brkChck)
+  df_fr$brkChckPre <- unlist(df_fr$brkChckPre
+                             )
   
   # add auxiliary data to the dataframe
   df_rec <- cbind(df_out[,c(1:4)], df_fr)#dat_tidy[,auxcols]
@@ -273,7 +280,36 @@ save(fireDts_tot, file = file.path(ofolder,paste0('fireDts_tot')))
 save(seg_tot, file = file.path(ofolder,paste0('seg_tot')))
 
 ```
+## Classes of pixels that were not processed
 
+```{r shp}
+df_rec_tot <- df_rec_tot[complete.cases(df_rec_tot),]
+# fraction of pixels with break
+sum(df_rec_tot$Break,na.rm = T)/ length(df_rec_tot$Break)
+# fraction of pixels with correct time span between break and fire
+sum(df_rec_tot$timeChck == F,na.rm = T)/ length(df_rec_tot$Break)
+# positive post-disturbance slope
+sum(df_rec_tot$postChck == F,na.rm = T)/ length(df_rec_tot$Break)
+# negative break
+sum(df_rec_tot$distChck == F,na.rm = T)/ length(df_rec_tot$Break)
+# no negative break in recovery period
+sum(df_rec_tot$brkChck == F,na.rm = T)/ length(df_rec_tot$Break)
+# no negative break in pre-disturbance period
+sum(df_rec_tot$brkChckPre == F,na.rm = T)/ length(df_rec_tot$Break)
+# total processed
+sum(is.na(df_rec_tot$R80P)==F)/ length(df_rec_tot$Break)
+# pixels 
+sum((df_rec_tot$Break & df_rec_tot$timeChck & df_rec_tot$postChck & df_rec_tot$distChck & df_rec_tot$brkChck & df_rec_tot$brkChckPre),na.rm = T)/ length(df_rec_tot$Break)
+
+totChck <- (df_rec_tot$Break & df_rec_tot$timeChck & df_rec_tot$postChck & df_rec_tot$distChck & df_rec_tot$brkChck & df_rec_tot$brkChckPre)
+
+which (is.na(df_rec_tot$R80P) & totChck == T)
+
+# not processed since not enough data before or after break
+sum(is.na(df_rec_tot$R80P) & totChck == T, na.rm = T)/ length(df_rec_tot$Break)
+
+which(is.na(df_rec_tot$Break))
+```
 ## Generate shapefile of all valid recovery indicators
 
 ```{r shp}

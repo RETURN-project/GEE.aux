@@ -179,7 +179,7 @@ df_covar$CWD <- df_covar$CWD*0.1
 
 save(df_covar, file = file.path(ofolder, 'df_covar_tot.Rdata'))
 ```
-
+# Combine dataframe with recovery indicators with dataframe of covariates
 ```{r combine}
 load(file.path(ifolder, 'df_rec_tot'))# load the recovery indicators
 df_rec_tot$ecoReg <- as.numeric(df_rec_tot$ecoReg)

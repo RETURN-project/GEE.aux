@@ -28,17 +28,24 @@ library(caret)
 # path to folder with data
 ifolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000/'#'./inst/testdata/'
 # path to folder where outputs should be stored
-ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000/'#'./inst/testdata/'
+ofolder <- '/home/wanda/Documents/data/upscaleRecovery/test/sample_n10000_For/'#'./inst/testdata/'
 # name of data files
 ```
 
 ## Load data
 
-```{r cars}
+```{r load_data}
 load(file.path(ifolder, 'total_val.Rdata'))
 load(file.path(ifolder, 'MAP'))
 ```
 
+## Load data
+
+```{r select_forest}
+# total_val <- dplyr::filter(total_val,ecoReg != 599 & ecoReg != 587 & ecoReg != 588 & ecoReg != 589 & ecoReg != 567 & ecoReg != 596 & ecoReg != 590 & ecoReg != 591 & ecoReg != 569 & ecoReg != 611 & ecoReg != 575 & ecoReg != 602 & ecoReg != 582 & ecoReg != 570 & ecoReg != 592 & ecoReg != 571 & ecoReg != 576 & ecoReg != 603 & ecoReg != 572 & ecoReg != 577 & ecoReg != 597 & ecoReg != 613 & ecoReg != 598 & ecoReg != 593 & ecoReg != 583 & ecoReg != 584 & ecoReg != 606 & ecoReg != 585 & ecoReg != 578 & ecoReg != 594 & ecoReg != 608 & ecoReg != 615 & ecoReg != 595 & ecoReg != 616 & ecoReg != 586 & ecoReg != 565 & ecoReg != 574 & ecoReg != 566)
+# 
+# save(total_val, file = file.path(ofolder, 'total_val.Rdata'))
+```
 
 ## Prepare data
 
@@ -57,14 +64,121 @@ coP <- ncf::correlog(total_val$lon, total_val$lat,total_val$MAP, increment = 1, 
 
 # find range where spatial autocorrelation = 0.
 zeroSA <- coP$x.intercept #in kilometers
+save(zeroSA, file = file.path(ofolder, 'zeroSA.Rdata'))
 
 # generate spatial blocks using the spatial range of zero autocorrelation
 folds <- spatialBlock(df_sf, rasterLayer=MAP, theRange=zeroSA*1000, k=10, biomod2Format=F)
 save(folds, file = file.path(ofolder, 'folds.Rdata'))
 # plot the blocks
-png(file.path(ifolder, 'folds_YrYr.png'), width = 700, height = 550)
+png(file.path(ofolder, 'folds_YrYr.png'), width = 700, height = 550)
 plot(folds)
 dev.off()
+```
+
+
+```{r brt_R80p}
+library(gbm)
+library(dismo)
+library(caret)
+# Select the most optimal tree cover range
+lm_R80PTC1 <- lm(R80P ~ TCmean500, data = total_val)#
+lm_R80PTC2 <- lm(R80P ~ TCmean1000, data = total_val)
+lm_R80PTC3 <- lm(R80P ~ TCmean5000, data = total_val)
+AIC(lm_R80PTC1, lm_R80PTC2, lm_R80PTC3)
+
+lm_pop1 <- lm(R80P ~ pop500, data = total_val)
+lm_pop2 <- lm(R80P ~ pop1000, data = total_val)#
+lm_pop3 <- lm(R80P ~ pop5000, data = total_val)
+lm_pop4 <- lm(R80P ~ pop10000, data = total_val)
+AIC(lm_pop1, lm_pop2, lm_pop3,lm_pop4)
+
+names_covars <- c('TCmean500', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP','impact','Vpre', 'pop500', 'distRoads')
+names_covars_short <- c('TC', 'Elev.', 'Slope','N','CEC','SOC', 'CWD','P. seas','MAP','Impact','Vpre', 'Pop.', 'Roads')
+
+# train brt model over a range of hyperparameters using 10 fold cross validation
+grid<-expand.grid(.n.trees=seq(1000,1500,by=500),.interaction.depth=seq(1,5,by=2),.shrinkage=c(.001,.01,.1), bag.fraction = c(0.5,0.75), .n.minobsinnode=10)
+
+# use 10 fold cross validation to define the most optimal settings
+dev_mod <- matrix(nrow = 10, ncol = dim(grid)[1])# deviance of each fold (rows) and each combination of settings (cols)
+rsq_mod <- matrix(nrow = 10, ncol = dim(grid)[1])# r squared of each fold (rows) and each combination of settings (cols)
+
+for (i in 1:length(folds[[1]])){
+  dat_train1 <- total_val[folds[[1]][[i]][[1]],]
+  dat_val1 <- total_val[folds[[1]][[i]][[2]],]
+  for (ii in 1:dim(grid)[1]){
+    mod_f1 <- gbm.fixed(dat_train1,gbm.x = names_covars, gbm.y = 'R80P',tree.complexity=grid$.interaction.depth[ii], learning.rate=grid$.shrinkage[ii], bag.fraction = grid$bag.fraction[ii], n.trees = grid$.n.trees[ii], family ='gaussian')
+    pred <- predict.gbm(mod_f1, dat_val1, n.trees=grid$.n.trees[ii], "response")
+    dev_mod[i,ii] <- mean((dat_val1$R80P-pred)^2)#calc.deviance(dat_val1$R80P,pred, calc.mean=TRUE)
+    rsq_mod[i,ii] <- cor(dat_val1$R80P,pred)^2
+  }
+  rm(dat_train1, dat_val1)
+}
+# the best settings are those that result in the minimum deviance
+best_mod <- which(colMeans(dev_mod, na.rm = T) == min(colMeans(dev_mod, na.rm = T), na.rm = T))
+
+# apply final brt model over entire dataset
+mod_brt <- gbm.fixed(total_val,gbm.x = names_covars, gbm.y = 'R80P',tree.complexity=grid$.interaction.depth[best_mod], learning.rate=grid$.shrinkage[best_mod], bag.fraction = grid$bag.fraction[best_mod], n.trees = grid$.n.trees[best_mod], family ='gaussian')
+
+# assess variable importance 
+summary(mod_brt)
+
+dev_final <- colMeans(dev_mod, na.rm = T)[best_mod]
+rsq_final <- colMeans(rsq_mod, na.rm = T)[best_mod]
+
+dat_covar <- total_val[names_covars]
+# plot marginal effects
+png(file.path(ofolder, 'marEffect_brt_R80P.png'), width = 1200, height = 300)
+plot_BRT_hist(mod_brt,dat_covar, names_covars, names_covars_short)
+dev.off()
+# evaluate interaction effects
+save(dev_mod, file = file.path(ofolder, 'dev_mod_R80P.Rdata'))
+save(rsq_mod, file = file.path(ofolder, 'rsq_mod_R80P.Rdata'))
+save(mod_brt, file = file.path(ofolder, 'mod_brt_R80P.Rdata'))
+
+
+# ---------------------------------------------------------
+# ---------------------------------------------------------
+names_covars_part <- c('TCmean500', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP', 'pop500', 'distRoads')
+names_covars_short_part <- c('TC', 'Elev.', 'Slope','N','CEC','SOC', 'CWD','P. seas','MAP', 'Pop.', 'Roads')
+# use 10 fold cross validation to define the most optimal settings
+dev_mod_part <- matrix(nrow = 10, ncol = dim(grid)[1])# deviance of each fold (rows) and each combination of settings (cols)
+rsq_mod_part <- matrix(nrow = 10, ncol = dim(grid)[1])# r squared of each fold (rows) and each combination of settings (cols)
+
+for (i in 1:length(folds[[1]])){
+  dat_train1 <- total_val[folds[[1]][[i]][[1]],]
+  dat_val1 <- total_val[folds[[1]][[i]][[2]],]
+  for (ii in 1:dim(grid)[1]){
+    mod_f1 <- gbm.fixed(dat_train1,gbm.x = names_covars_part, gbm.y = 'R80P',tree.complexity=grid$.interaction.depth[ii], learning.rate=grid$.shrinkage[ii], bag.fraction = grid$bag.fraction[ii], n.trees = grid$.n.trees[ii], family ='gaussian')
+    pred <- predict.gbm(mod_f1, dat_val1, n.trees=grid$.n.trees[ii], "response")
+    dev_mod_part[i,ii] <- mean((dat_val1$R80P-pred)^2)#calc.deviance(dat_val1$YrYr,pred, calc.mean=TRUE)
+    rsq_mod_part[i,ii] <- cor(dat_val1$R80P,pred)^2
+  }
+  rm(dat_train1, dat_val1)
+}
+# the best settings are those that result in the minimum deviance
+best_mod_part <- which(colMeans(dev_mod_part, na.rm = T) == min(colMeans(dev_mod_part, na.rm = T), na.rm = T))
+
+colMeans(dev_mod_part, na.rm = T)[best_mod_part]
+colMeans(rsq_mod_part, na.rm = T)[best_mod_part]
+
+# apply final brt model over entire dataset
+mod_brt_part <- gbm.fixed(total_val,gbm.x = c('TCmean5000', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP', 'pop10000', 'distRoads'), gbm.y = 'R80P',tree.complexity=grid$.interaction.depth[best_mod_part], learning.rate=grid$.shrinkage[best_mod_part], bag.fraction = grid$bag.fraction[best_mod_part], n.trees = grid$.n.trees[best_mod_part], family ='gaussian')
+
+dat_covar <- total_val[names_covars_part]
+# assess variable importance 
+png(file.path(ofolder, 'mod_brt_part_R80P.png'), width = 700, height = 1500)
+summary(mod_brt_part)
+dev.off()
+# plot marginal effects
+png(file.path(ofolder, 'marEffect_brt_part_R80P.png'), width = 1200, height = 300)
+plot_BRT_hist(mod_brt_part,dat_covar, names_covars_part, names_covars_short_part)
+dev.off()
+
+save(dev_mod_part, file = file.path(ofolder, 'dev_mod_R80P_part.Rdata'))
+save(rsq_mod_part, file = file.path(ofolder, 'rsq_mod_R80P_part.Rdata'))
+save(mod_brt_part, file = file.path(ofolder, 'mod_brt_R80P_part.Rdata'))
+
+
 ```
 
 
@@ -220,102 +334,5 @@ dev.off()
 #'TCmean500','Slope',,'CEC_000_015', 'Dist_N','Pseas','TCmean500', 'Nitro_000_015','MAP',
 # gbm.price<-gbm(price~.,data=train,n.trees = 300,interaction.depth = 1,
               # shrinkage = .1,distribution = 'gaussian')
-```
-
-
-```{r brt_R80p}
-library(gbm)
-library(dismo)
-library(caret)
-# Select the most optimal tree cover range
-lm_R80PTC1 <- lm(R80P ~ TCmean500, data = total_val)#
-lm_R80PTC2 <- lm(R80P ~ TCmean1000, data = total_val)
-lm_R80PTC3 <- lm(R80P ~ TCmean5000, data = total_val)
-AIC(lm_R80PTC1, lm_R80PTC2, lm_R80PTC3)
-
-lm_pop1 <- lm(R80P ~ pop500, data = total_val)
-lm_pop2 <- lm(R80P ~ pop1000, data = total_val)#
-lm_pop3 <- lm(R80P ~ pop5000, data = total_val)
-lm_pop4 <- lm(R80P ~ pop10000, data = total_val)
-AIC(lm_pop1, lm_pop2, lm_pop3,lm_pop4)
-
-names_covars <- c('TCmean500', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP','impact','Vpre', 'pop500', 'distRoads')
-names_covars_short <- c('TC', 'Elev.', 'Slope','N','CEC','SOC', 'CWD','P. seas','MAP','Impact','Vpre', 'Pop.', 'Roads')
-
-# train brt model over a range of hyperparameters using 10 fold cross validation
-grid<-expand.grid(.n.trees=seq(1000,1500,by=500),.interaction.depth=seq(1,5,by=2),.shrinkage=c(.001,.01,.1), bag.fraction = c(0.5,0.75), .n.minobsinnode=10)
-
-# use 10 fold cross validation to define the most optimal settings
-dev_mod <- matrix(nrow = 10, ncol = dim(grid)[1])# deviance of each fold (rows) and each combination of settings (cols)
-rsq_mod <- matrix(nrow = 10, ncol = dim(grid)[1])# r squared of each fold (rows) and each combination of settings (cols)
-
-for (i in 1:length(folds[[1]])){
-  dat_train1 <- total_val[folds[[1]][[i]][[1]],]
-  dat_val1 <- total_val[folds[[1]][[i]][[2]],]
-  for (ii in 1:dim(grid)[1]){
-    mod_f1 <- gbm.fixed(dat_train1,gbm.x = names_covars, gbm.y = 'R80P',tree.complexity=grid$.interaction.depth[ii], learning.rate=grid$.shrinkage[ii], bag.fraction = grid$bag.fraction[ii], n.trees = grid$.n.trees[ii], family ='gaussian')
-    pred <- predict.gbm(mod_f1, dat_val1, n.trees=grid$.n.trees[ii], "response")
-    dev_mod[i,ii] <- mean((dat_val1$R80P-pred)^2)#calc.deviance(dat_val1$R80P,pred, calc.mean=TRUE)
-    rsq_mod[i,ii] <- cor(dat_val1$R80P,pred)^2
-  }
-  rm(dat_train1, dat_val1)
-}
-# the best settings are those that result in the minimum deviance
-best_mod <- which(colMeans(dev_mod, na.rm = T) == min(colMeans(dev_mod, na.rm = T), na.rm = T))
-
-# apply final brt model over entire dataset
-mod_brt <- gbm.fixed(total_val,gbm.x = names_covars, gbm.y = 'R80P',tree.complexity=grid$.interaction.depth[best_mod], learning.rate=grid$.shrinkage[best_mod], bag.fraction = grid$bag.fraction[best_mod], n.trees = grid$.n.trees[best_mod], family ='gaussian')
-
-# assess variable importance 
-summary(mod_brt)
-
-dev_final <- colMeans(dev_mod, na.rm = T)[best_mod]
-rsq_final <- colMeans(rsq_mod, na.rm = T)[best_mod]
-
-dat_covar <- total_val[names_covars]
-# plot marginal effects
-png(file.path(ifolder, 'marEffect_brt_R80P.png'), width = 1200, height = 300)
-plot_BRT_hist(mod_brt,dat_covar, names_covars, names_covars_short)
-dev.off()
-# evaluate interaction effects
-
-# ---------------------------------------------------------
-# ---------------------------------------------------------
-names_covars_part <- c('TCmean500', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP', 'pop500', 'distRoads')
-names_covars_short_part <- c('TC', 'Elev.', 'Slope','N','CEC','SOC', 'CWD','P. seas','MAP', 'Pop.', 'Roads')
-# use 10 fold cross validation to define the most optimal settings
-dev_mod_part <- matrix(nrow = 10, ncol = dim(grid)[1])# deviance of each fold (rows) and each combination of settings (cols)
-rsq_mod_part <- matrix(nrow = 10, ncol = dim(grid)[1])# r squared of each fold (rows) and each combination of settings (cols)
-
-for (i in 1:length(folds[[1]])){
-  dat_train1 <- total_val[folds[[1]][[i]][[1]],]
-  dat_val1 <- total_val[folds[[1]][[i]][[2]],]
-  for (ii in 1:dim(grid)[1]){
-    mod_f1 <- gbm.fixed(dat_train1,gbm.x = names_covars_part, gbm.y = 'R80P',tree.complexity=grid$.interaction.depth[ii], learning.rate=grid$.shrinkage[ii], bag.fraction = grid$bag.fraction[ii], n.trees = grid$.n.trees[ii], family ='gaussian')
-    pred <- predict.gbm(mod_f1, dat_val1, n.trees=grid$.n.trees[ii], "response")
-    dev_mod_part[i,ii] <- mean((dat_val1$R80P-pred)^2)#calc.deviance(dat_val1$YrYr,pred, calc.mean=TRUE)
-    rsq_mod_part[i,ii] <- cor(dat_val1$R80P,pred)^2
-  }
-  rm(dat_train1, dat_val1)
-}
-# the best settings are those that result in the minimum deviance
-best_mod_part <- which(colMeans(dev_mod_part, na.rm = T) == min(colMeans(dev_mod_part, na.rm = T), na.rm = T))
-
-colMeans(dev_mod_part, na.rm = T)[best_mod_part]
-colMeans(rsq_mod_part, na.rm = T)[best_mod_part]
-
-# apply final brt model over entire dataset
-mod_brt_part <- gbm.fixed(total_val,gbm.x = c('TCmean5000', 'Elev', 'Slope','Nitro_000_030','CEC_000_030','SOC_000_030', 'CWD','Pseas','MAP', 'pop10000', 'distRoads'), gbm.y = 'R80P',tree.complexity=grid$.interaction.depth[best_mod_part], learning.rate=grid$.shrinkage[best_mod_part], bag.fraction = grid$bag.fraction[best_mod_part], n.trees = grid$.n.trees[best_mod_part], family ='gaussian')
-
-dat_covar <- total_val[names_covars_part]
-# assess variable importance 
-png(file.path(ifolder, 'mod_brt_part_R80P.png'), width = 700, height = 1500)
-summary(mod_brt_part)
-dev.off()
-# plot marginal effects
-png(file.path(ifolder, 'marEffect_brt_part_R80P.png'), width = 1200, height = 300)
-plot_BRT_hist(mod_brt_part,dat_covar, names_covars_part, names_covars_short_part)
-dev.off()
-
 ```
 
